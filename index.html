@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive University at Buffalo Applied Ontology degree pathway planner for M.S. and Ph.D. students.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <title>UB Applied Ontology Degree Pathway</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div>
+        <p class="eyebrow">University at Buffalo · Applied Ontology</p>
+        <h1>Find your path to the degree.</h1>
+        <p class="subtitle">Mark where you are. The pathway changes with you, showing what is complete, what comes next, and how different course loads change your route.</p>
+      </div>
+      <div class="privacy-chip">Nothing you select is saved</div>
+    </div>
+  </header>
+
+  <main>
+    <section id="program-gate" class="program-gate" aria-labelledby="program-heading">
+      <p class="step-label">Start here</p>
+      <h2 id="program-heading">Which degree are you working toward?</h2>
+      <div class="program-choice" role="group" aria-label="Degree program">
+        <button type="button" class="program-card" data-program="ms">
+          <span class="program-abbr">MS</span>
+          <span><strong>Applied Ontology M.S.</strong><small>30 credits · coursework + Master’s Project</small></span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </button>
+        <button type="button" class="program-card" data-program="phd">
+          <span class="program-abbr">PhD</span>
+          <span><strong>Applied Ontology Ph.D.</strong><small>72 credits · coursework + doctoral research</small></span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </button>
+      </div>
+      <details class="privacy-details">
+        <summary>Privacy and planning notice</summary>
+        <p>Do not enter your name, UB person number, email address, exact grades, or other personal information. This application uses no database, login, cookies, analytics, localStorage, sessionStorage, or network submission. Selections exist only in this browser tab. This is a planning aid, not an official degree audit.</p>
+      </details>
+    </section>
+
+    <section id="planner-app" class="planner-app" hidden>
+      <div class="planner-toolbar">
+        <div>
+          <span class="step-label">Your degree pathway</span>
+          <h2 id="program-title">Applied Ontology</h2>
+        </div>
+        <button type="button" id="change-program" class="text-button">Change degree</button>
+      </div>
+
+      <nav id="journey-map" class="journey-map" aria-label="Degree pathway"></nav>
+
+      <div class="workspace">
+        <section id="checkpoint" class="checkpoint-card" aria-live="polite">
+          <div class="checkpoint-heading">
+            <div>
+              <p id="checkpoint-kicker" class="step-label"></p>
+              <h3 id="checkpoint-title"></h3>
+              <p id="checkpoint-intro" class="checkpoint-intro"></p>
+            </div>
+            <span id="checkpoint-state" class="state-badge"></span>
+          </div>
+          <div id="checkpoint-body"></div>
+          <div class="checkpoint-actions">
+            <button type="button" id="previous-stage">← Previous</button>
+            <button type="button" id="next-stage" class="primary">Next checkpoint →</button>
+          </div>
+        </section>
+
+        <aside class="position-card" aria-live="polite">
+          <div class="position-top">
+            <div id="progress-ring" class="progress-ring" role="img" aria-label="Credit progress">
+              <div><strong id="progress-percent">0%</strong><span>credits</span></div>
+            </div>
+            <div>
+              <p class="step-label">You are here</p>
+              <h3 id="current-stage-label"></h3>
+              <p id="credit-summary" class="muted"></p>
+            </div>
+          </div>
+          <div class="next-move">
+            <span>Next move</span>
+            <strong id="next-move-title"></strong>
+            <p id="next-move-detail"></p>
+            <button type="button" id="go-next">Take me there →</button>
+          </div>
+          <div id="branch-summary" class="branch-summary"></div>
+        </aside>
+      </div>
+
+      <section class="pace-section" aria-labelledby="pace-heading">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">Try a route</p>
+            <h2 id="pace-heading">How fast do you want to move?</h2>
+            <p>Choose a regular Fall/Spring load. Your projected route redraws immediately.</p>
+          </div>
+          <label class="start-term-label">Plan from
+            <select id="start-term"></select>
+          </label>
+        </div>
+
+        <div id="load-branches" class="load-branches" role="group" aria-label="Courses per regular semester"></div>
+
+        <div class="pace-options">
+          <label class="toggle-control"><input type="checkbox" id="include-summer"><span>Include up to 1 Summer course</span></label>
+          <label class="toggle-control"><input type="checkbox" id="include-winter"><span>Include up to 1 Winter course</span></label>
+        </div>
+
+        <div class="route-shell">
+          <div class="route-head">
+            <div>
+              <span class="step-label">Selected route</span>
+              <h3 id="route-finish"></h3>
+            </div>
+            <p id="route-note"></p>
+          </div>
+          <div id="timeline" class="timeline"></div>
+        </div>
+      </section>
+
+      <section class="summary-section" aria-labelledby="summary-heading">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">Take it with you</p>
+            <h2 id="summary-heading">Your current planning summary</h2>
+            <p>This updates continuously. Use it when you want a detailed checklist or something to discuss with your adviser.</p>
+          </div>
+          <div class="summary-actions">
+            <button type="button" id="print-report">Print / Save PDF</button>
+            <button type="button" id="copy-report">Copy summary</button>
+            <button type="button" id="download-report">Download text</button>
+          </div>
+        </div>
+        <div id="summary-content" class="summary-content" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p><strong>Planning aid only.</strong> Verify official records, course availability, Graduate School requirements, and class-specific dates in HUB. University and program rules control if they differ from this tool.</p>
+  </footer>
+
+  <script src="js/data.js?v=2"></script>
+  <script src="js/engine.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
+</body>
+</html>
