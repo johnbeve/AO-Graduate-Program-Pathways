@@ -104,14 +104,14 @@ window.AO_DATA = (() => {
 
   const contacts = {
     adviser: {
-      role: 'Your assigned faculty adviser',
+      role: 'Your assigned faculty advisor',
       when: 'Course selection, registration consultation, research/project planning, elective approval and academic progress.'
     },
     programDirector: {
       role: 'Applied Ontology Program Director',
       name: 'John Beverley',
       email: 'johnbeve@buffalo.edu',
-      when: 'Program-rule questions, Symbolic Logic Competency Exam, prior-learning questions, exceptions and unresolved requirement questions.'
+      when: 'Program-rule questions, Symbolic Logic requirements, experience/transfer credit questions, exceptions and unresolved requirement questions.'
     },
     graduateSchool: {
       role: 'UB Graduate School',

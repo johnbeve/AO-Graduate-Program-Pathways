@@ -61,12 +61,13 @@ main { max-width: 1160px; margin: 0 auto; padding: 30px 20px 64px; }
 .journey-node.current .dot { border-color: var(--ub-blue); background: var(--ub-blue); color: white; box-shadow: 0 0 0 6px rgba(0,91,187,.11); }
 .journey-node.selected .dot { outline: 3px solid rgba(0,91,187,.17); outline-offset: 3px; }
 .journey-node.future { opacity: .68; }
+.journey-node.locked { opacity: .38; cursor: not-allowed; }
+.journey-node.locked .dot { background: #f4f6f8; border-color: #dbe2e9; font-size: .72rem; }
 .journey-node:focus-visible { outline: 2px solid var(--ub-blue); outline-offset: 4px; border-radius: 8px; }
-.node-branch { position: absolute; top: 48px; right: 4px; background: white; border: 1px solid #cdd8e5; color: var(--ub-blue-dark); border-radius: 999px; padding: 2px 5px; font-size: .55rem; font-weight: 900; }
 
 .workspace { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(285px, .65fr); gap: 20px; align-items: start; }
 .checkpoint-card, .position-card, .pace-section, .summary-section { background: var(--paper); border: 1px solid var(--line); border-radius: 17px; box-shadow: var(--shadow); }
-.checkpoint-card { padding: 24px; min-height: 430px; }
+.checkpoint-card { padding: 24px; min-height: 360px; }
 .checkpoint-heading { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 18px; }
 .checkpoint-heading h3 { margin: 0; font-size: 1.45rem; }
 .checkpoint-intro { margin: 5px 0 0; color: var(--muted); max-width: 670px; }
@@ -102,6 +103,21 @@ main { max-width: 1160px; margin: 0 auto; padding: 30px 20px 64px; }
 .choice-button { border: 1px solid #c2cedb; background: white; color: var(--ink); border-radius: 10px; padding: 9px 12px; min-height: 42px; font-weight: 800; font-size: .82rem; }
 .choice-button.selected { border-color: var(--ub-blue); background: var(--soft-blue); color: var(--ub-blue-dark); box-shadow: inset 0 0 0 1px var(--ub-blue); }
 .choice-button:focus-visible, select:focus-visible, input:focus-visible, button:focus-visible { outline: 3px solid rgba(0,91,187,.2); outline-offset: 2px; }
+
+.logic-control { display: grid; grid-template-columns: minmax(0, 1fr) minmax(290px, 430px); gap: 24px; align-items: start; }
+.logic-control > div:first-child > h4 { margin: 0 0 4px; font-size: .98rem; }
+.logic-control > div:first-child > p { margin: 0 0 11px; color: var(--muted); font-size: .82rem; }
+.logic-choices { flex-direction: column; flex-wrap: nowrap; align-items: stretch; margin-left: auto; width: 100%; }
+.logic-choices .choice-button { width: 100%; text-align: left; justify-content: flex-start; }
+
+.elective-total, .credit-total { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-radius: 12px; padding: 12px 14px; background: var(--soft-blue); color: var(--ub-blue-dark); }
+.elective-total span, .credit-total span { font-size: .78rem; font-weight: 800; }
+.elective-total strong, .credit-total strong { font-size: 1rem; white-space: nowrap; }
+.credit-path-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin-top: 14px; }
+.credit-path-card { border: 1px solid var(--line); border-radius: 12px; background: #fbfcfe; padding: 14px; }
+.credit-path-card h4 { margin: 0 0 5px; font-size: .92rem; }
+.credit-path-card p { min-height: 48px; margin: 0 0 12px; color: var(--muted); font-size: .78rem; }
+.credit-total { margin-top: 12px; }
 .compact-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 11px; }
 .field { display: flex; flex-direction: column; gap: 5px; font-weight: 800; font-size: .8rem; }
 .field small { color: var(--muted); font-weight: 500; }
@@ -177,7 +193,6 @@ button:disabled { opacity: .45; cursor: default; }
 .requirement-row p { margin: 2px 0 0; font-size: .72rem; }
 .success-box { background: var(--ok-soft); color: var(--ok); border-radius: 10px; padding: 12px; font-size: .8rem; font-weight: 700; }
 .source-line { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 12px; color: var(--muted); font-size: .7rem; }
-.footer { max-width: 1160px; margin: 0 auto; padding: 0 20px 32px; color: var(--muted); font-size: .76rem; }
 
 @keyframes reveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
@@ -201,7 +216,9 @@ button:disabled { opacity: .45; cursor: default; }
   .planner-toolbar, .section-heading, .route-head { align-items: flex-start; flex-direction: column; }
   .checkpoint-card, .position-card, .pace-section, .summary-section { padding: 16px; }
   .checkpoint-heading { flex-direction: column; }
-  .compact-grid { grid-template-columns: 1fr; }
+  .compact-grid, .credit-path-grid, .logic-control { grid-template-columns: 1fr; }
+  .logic-choices { margin-left: 0; }
+  .credit-path-card p { min-height: 0; }
   .course-item { grid-template-columns: 1fr; }
   .load-branches { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .timeline { grid-template-columns: 1fr; }

@@ -1,46 +1,80 @@
 # Source Notes and Rule Decisions
 
-This file records how the supplied program materials were translated into the planner and the current program-level clarifications reflected in the interface.
+This file records how the supplied program materials and current program-level clarifications are represented in the planner.
 
 ## 1. M.S. program model
 
-Operational requirements encoded in the planner include:
+The planner encodes:
 
 - 30 total credits.
 - PHI 701 MS Project Guidance, with at least 3 credits required.
-- Three required Applied Ontology courses, represented with their current numbers:
+- Three required Applied Ontology courses using current numbers:
   - PHI 604 Ontology Engineering (formerly PHI 530).
   - PHI 605 Topics in Applied Ontology (formerly PHI 531 Problems in Ontology).
   - PHI 606 Applied Ontology Seminar (formerly PHI 598).
-- Symbolic Logic as a separate requirement and separate visual checkpoint.
+- Symbolic Logic as a separate checkpoint.
 - At least 12 elective credits.
-- Internship credit as part of the elective checkpoint.
-- Formally approved prior-learning / transfer credit as a separate checkpoint.
-- Master’s Project under faculty-adviser supervision as the sole culminating M.S. experience represented by this planner.
-- Pre-registration consultation with the student's adviser.
-- Master’s Graduation Application in HUB and the final graduation survey as the final checkpoint.
+- Internship credit within the elective checkpoint.
+- Experience and transfer credit as a separate checkpoint.
+- The Master’s Project as the sole culminating M.S. experience represented by the planner.
+- Pre-registration consultation with the student’s faculty advisor.
+- Master’s Graduation Application in HUB and the graduation survey as the final checkpoint.
 
-The interface does not ask for exact grades. A named course can be marked **Satisfied — B+ or better**, **Completed below B+**, or **Not yet**. The same interaction is used in both the M.S. and Ph.D. pathways.
+The main M.S. checkpoint labels are **Administrative**, **Logic**, **Core**, **Electives**, **Experience/Transfer**, **Master’s Guidance**, and **Master’s Application**.
 
-## 2. M.S. prior-credit issue
+## 2. Administrative gate
 
-The November 2025 M.S. handbook states a combined 6-credit limit for transfer/professional-experience credit. The later accepted 2026 SUNY proposal contains a 12-credit maximum for Prior Learning Assessment. The planner therefore:
+The planner does not allow a student to navigate beyond the Administrative checkpoint until the student confirms both:
 
-1. accepts only credit the student identifies as formally approved,
-2. permits entry through the 12-credit proposal maximum,
-3. warns above 6 credits that the approved application should be confirmed,
-4. does not resolve the policy discrepancy on behalf of the Program Director or Graduate School.
+- a faculty advisor has been assigned, and
+- registration has been discussed with that advisor.
 
-## 3. Ph.D. program model
+If no advisor is assigned, the next action shown is: **Contact the AO director to confirm your faculty advisor assignment**.
 
-Encoded requirements include:
+## 3. Symbolic Logic
+
+The M.S. Symbolic Logic checkpoint permits the following states:
+
+- Competency exam passed.
+- B+ or better in Symbolic Logic Independent Study.
+- Completed MindTap course.
+- One unsuccessful exam attempt.
+- Two unsuccessful exam attempts.
+- Not satisfied.
+
+Program-level clarification reflected in the planner:
+
+- Completing the Symbolic Logic Independent Study with a B+ or better satisfies the logic requirement and contributes **3 elective credits**.
+- MindTap satisfies the logic checkpoint but is not assigned degree credit in the planner.
+- After two unsuccessful competency-exam attempts, the next action is **Enroll in Symbolic Logic Independent Study**.
+- If the requirement is simply not satisfied, the next action directs the student to take a competency exam or complete a specified logic course.
+
+## 4. M.S. experience and transfer credit
+
+The interface no longer asks for “total approved credits” and a second allocation “toward electives.” Experience and transfer are instead tracked independently.
+
+### Prior experience credit
+
+Student-facing direction: to obtain prior experience credit, the student must demonstrate competence by passing an oral or written exam.
+
+### Transfer credit
+
+Student-facing direction: to obtain transfer credit, the student must provide evidence of the content of the course (for example, a syllabus or course website) together with a passing grade.
+
+Approved experience and transfer credits count toward total degree credits in the planner. They do **not** automatically count toward the elective minimum.
+
+The supplied M.S. materials contain a credit-limit discrepancy: the November 2025 handbook describes a combined 6-credit limit for transfer/professional-experience credit, while the later accepted 2026 SUNY proposal contains a 12-credit maximum for Prior Learning Assessment. The planner permits entry through the 12-credit proposal maximum and displays a confirmation warning above 6 credits rather than resolving the policy discrepancy.
+
+## 5. Ph.D. program model
+
+The planner encodes:
 
 - 72 total credits.
 - 18 credits of required coursework.
 - 12–30 credits of PHI 703 Dissertation Guidance.
 - at least 24 elective-category credits in the planning model.
 - up to 12 directed-internship credits within the elective side of the program.
-- up to 36 credits of formally approved Prior Learning Assessment.
+- up to 36 credits of approved experience/transfer credit within the prior-learning allowance.
 - a preliminary/qualifying requirement and RCR checkpoint.
 - Ph.D. Application to Candidacy.
 - dissertation completion/defense and final Graduate School processing.
@@ -54,11 +88,9 @@ Required courses from the proposal are translated to current numbers:
 - PHI 607 Semantic Data Integration (formerly PHI 548 Ontology for Data Science).
 - PHI 602 Logic for Ontologies (formerly PHI 635).
 
-The supplied Ph.D. proposal does not define the AO program's exact internal preliminary/qualifying mechanism. The planner therefore tracks a generic **preliminary/qualifying requirement satisfied** milestone rather than inventing a paper, prospectus, or examination sequence.
+The supplied Ph.D. proposal does not define the AO program’s exact internal preliminary/qualifying mechanism. The planner therefore tracks a generic preliminary/qualifying milestone rather than inventing a paper, prospectus, or examination sequence.
 
-## 4. Current PHI graduate course numbering
-
-Mappings used by the planner include:
+## 6. Current PHI graduate course numbering
 
 | Former | Current |
 | --- | --- |
@@ -79,22 +111,25 @@ Mappings used by the planner include:
 
 PHI 609 Ontology and AI is also included as a possible elective option.
 
-## 5. Timeline model
+## 7. Timeline model
 
-The route simulator is a capacity model. It uses:
+The route simulator uses:
 
-- the student's selected starting term,
+- the selected starting term,
 - 1–5 courses per regular Fall/Spring semester,
 - optional one-course Summer and Winter terms,
+- semester-specific overrides,
 - remaining required core courses,
-- remaining guidance credits based on the selected guidance-credit total, and
-- generic approved elective/other degree coursework sufficient to reach the modeled category and total-credit requirements.
+- remaining guidance credits, and
+- generic approved elective/other degree coursework needed to reach the modeled credit requirements.
 
-It does not claim that a specific course will actually be offered in the modeled term.
+If the M.S. student has two unsuccessful Symbolic Logic exam attempts, the future route includes the required Symbolic Logic Independent Study as a 3-credit elective task.
 
-## 6. Intentionally not modeled
+The route does not claim that a specific course will actually be offered in a modeled term.
 
-The planner deliberately does not request or adjudicate:
+## 8. Intentionally not modeled
+
+The planner does not request or adjudicate:
 
 - name, email, UB person number, address or other identifiers,
 - exact grades,
@@ -106,15 +141,3 @@ The planner deliberately does not request or adjudicate:
 - whether a specific class section is available,
 - individual exceptions not formally approved,
 - dissertation quality beyond the broad stage selected by the student.
-
-These require official records or adviser/Graduate School judgment and do not belong in a no-storage self-service simulator.
-
-
-## Semester-specific route customization
-
-The selected 1–5 Fall/Spring pace is a starting template. Students may override individual Fall/Spring terms to 0–5 courses and enabled Summer/Winter terms to 0–1 course. Remaining tasks are redistributed automatically.
-
-
-## Student-facing copy policy
-
-Main-path checkpoint text is limited to directions the student needs. Source reconciliation, rationale for interface structure, and modeling caveats that are not immediate student actions remain in this source-notes file or concise disclaimers.

@@ -9,6 +9,7 @@ window.AO_ENGINE = (() => {
     lowgrade: 'Completed below B+ (not counted in this planner)'
   };
 
+  const LOGIC_SATISFIED = new Set(['passed', 'iscomplete', 'mindtap']);
   const n = v => Number(v || 0);
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
   const course = id => D.courses[id];
@@ -19,6 +20,10 @@ window.AO_ENGINE = (() => {
 
   function statusCredits(status) {
     return status === 'completed' ? 3 : 0;
+  }
+
+  function logicSatisfied(status) {
+    return LOGIC_SATISFIED.has(status);
   }
 
   function inferStartTerm(date = new Date()) {
@@ -91,8 +96,13 @@ window.AO_ENGINE = (() => {
   function analyze(input) {
     const program = D.programs[input.program];
     const named = getNamedCourseCounts(input, program);
-    const prior = clamp(n(input.priorCredits), 0, program.priorLearningMax);
-    const priorElective = clamp(n(input.priorElectiveCredits), 0, prior);
+
+    const experienceRequested = clamp(n(input.experienceCredits), 0, program.priorLearningMax);
+    const transferRequested = clamp(n(input.transferCredits), 0, program.priorLearningMax);
+    const experienceCredits = experienceRequested;
+    const transferCredits = Math.min(transferRequested, Math.max(0, program.priorLearningMax - experienceCredits));
+    const prior = experienceCredits + transferCredits;
+
     const guidanceTarget = clamp(n(input.guidanceTarget), program.guidanceMin, program.guidanceMax);
     const guidanceCompleted = clamp(n(input.guidanceCompleted), 0, guidanceTarget);
     const internshipCompleted = clamp(n(input.internshipCompleted), 0, program.internshipMax);
@@ -100,33 +110,38 @@ window.AO_ENGINE = (() => {
 
     const coreCompleted = named.core.reduce((s, x) => s + statusCredits(x.status), 0);
     const namedElectiveCompleted = named.electives.reduce((s, x) => s + statusCredits(x.status), 0);
-    const electiveCompleted = namedElectiveCompleted + internshipCompleted + additionalElectiveCompleted + priorElective;
+    const logicElectiveCredits = input.program === 'ms' && input.logicStatus === 'iscomplete' ? 3 : 0;
+    const electiveCompleted = namedElectiveCompleted + internshipCompleted + additionalElectiveCompleted + logicElectiveCredits;
 
-    const totalCompletedRaw = coreCompleted + namedElectiveCompleted + internshipCompleted + additionalElectiveCompleted + guidanceCompleted + prior;
+    const totalCompletedRaw = coreCompleted + namedElectiveCompleted + internshipCompleted + additionalElectiveCompleted + logicElectiveCredits + guidanceCompleted + prior;
     const totalCompleted = Math.min(program.totalCredits, totalCompletedRaw);
     const coreSatisfied = named.core.filter(x => x.status === 'completed').length;
     const coreRemaining = named.core.filter(x => x.status !== 'completed');
 
     const warnings = [];
+    if (experienceRequested + transferRequested > program.priorLearningMax) {
+      warnings.push(`Experience and transfer credit together cannot exceed ${program.priorLearningMax} credits in this planning model.`);
+    }
     if (program.id === 'ms' && prior > 9) {
-      warnings.push('If approved M.S. prior credit would leave fewer than 21 UB graduate credits, confirm the credit application with the Graduate School before relying on the estimate.');
+      warnings.push('If approved M.S. experience/transfer credit would leave fewer than 21 UB graduate credits, confirm the credit application with the Graduate School before relying on the estimate.');
     }
     if (program.id === 'ms' && prior > 6) {
-      warnings.push('If more than 6 M.S. prior-learning or transfer credits are being applied, confirm the approved total with the Program Director and Graduate School.');
+      warnings.push('If more than 6 M.S. experience/transfer credits are being applied, confirm the approved total with the AO Director and Graduate School.');
     }
     if (program.id === 'phd' && prior > 0) {
-      warnings.push('Confirm with your adviser how approved Ph.D. prior-learning credit is allocated across the 72-credit degree requirements.');
+      warnings.push('Confirm with your advisor how approved Ph.D. experience/transfer credit is applied across the 72-credit degree requirements.');
     }
 
     const academicComplete = program.id === 'ms'
-      ? coreSatisfied === program.core.length && guidanceCompleted >= program.guidanceMin && electiveCompleted >= program.electiveMinimum && totalCompleted >= program.totalCredits && ['passed', 'iscomplete'].includes(input.logicStatus) && input.projectStage === 'completed'
+      ? coreSatisfied === program.core.length && guidanceCompleted >= program.guidanceMin && electiveCompleted >= program.electiveMinimum && totalCompleted >= program.totalCredits && logicSatisfied(input.logicStatus) && input.projectStage === 'completed'
       : coreSatisfied === program.core.length && guidanceCompleted >= program.guidanceMin && electiveCompleted >= program.electiveMinimum && totalCompleted >= program.totalCredits && input.preliminarySatisfied && input.rcrCompleted && input.dissertationStage === 'defended';
 
     return {
       program,
       named,
       prior,
-      priorElective,
+      experienceCredits,
+      transferCredits,
       guidanceTarget,
       guidanceCompleted,
       internshipCompleted,
@@ -135,6 +150,7 @@ window.AO_ENGINE = (() => {
       coreSatisfied,
       coreRemaining,
       namedElectiveCompleted,
+      logicElectiveCredits,
       electiveCompleted,
       totalCompleted,
       academicComplete,
@@ -142,27 +158,51 @@ window.AO_ENGINE = (() => {
     };
   }
 
+  function logicRequirementRow(input) {
+    if (logicSatisfied(input.logicStatus)) return null;
+    if (input.logicStatus === 'failed2') {
+      return {
+        type: 'Logic',
+        item: 'Enroll in Symbolic Logic Independent Study',
+        action: 'Complete Symbolic Logic Independent Study with a B+ or better. Its 3 credits will count toward the elective requirement.',
+        contact: 'programDirector'
+      };
+    }
+    if (input.logicStatus === 'failed1') {
+      return {
+        type: 'Logic',
+        item: 'Retake the Symbolic Logic Competency Exam',
+        action: 'Take the competency exam at its next offering, or complete a specified logic course.',
+        contact: 'programDirector'
+      };
+    }
+    return {
+      type: 'Logic',
+      item: 'Satisfy the Symbolic Logic requirement',
+      action: 'Take a competency exam, or complete a specified logic course.',
+      contact: 'programDirector'
+    };
+  }
+
   function buildRemainingRequirements(input, a) {
     const p = a.program;
     const rows = [];
+
+    if (input.program === 'ms') {
+      const logicRow = logicRequirementRow(input);
+      if (logicRow) rows.push(logicRow);
+    }
 
     a.coreRemaining.forEach(x => {
       const action = x.status === 'lowgrade'
         ? 'Complete this requirement with a B+ or better.'
         : 'Complete this required course with a B+ or better.';
-      rows.push({ type: 'Required course', item: courseLabel(x.id), action, contact: 'adviser' });
+      rows.push({ type: 'Core', item: courseLabel(x.id), action, contact: 'adviser' });
     });
-
-    if (input.program === 'ms' && !['passed', 'iscomplete'].includes(input.logicStatus)) {
-      let action = 'Take and pass the Symbolic Logic Competency Exam.';
-      if (input.logicStatus === 'failed1') action = 'Retake the Symbolic Logic Competency Exam at its next offering.';
-      if (input.logicStatus === 'failed2') action = 'Complete the Symbolic Logic Independent Study with B+ or better before graduation.';
-      rows.push({ type: 'Milestone', item: 'Symbolic Logic Requirement', action, contact: 'programDirector' });
-    }
 
     const electiveNeed = Math.max(0, p.electiveMinimum - a.electiveCompleted);
     if (electiveNeed > 0) {
-      rows.push({ type: 'Credits', item: `${electiveNeed} more elective-category credit${electiveNeed === 1 ? '' : 's'} needed`, action: 'Complete approved electives or internship credit. Formally approved prior credit may count only as officially allocated.', contact: 'adviser' });
+      rows.push({ type: 'Electives', item: `${electiveNeed} more elective credit${electiveNeed === 1 ? '' : 's'} needed`, action: 'Complete approved electives or internship credit.', contact: 'adviser' });
     }
 
     if (a.guidanceCompleted < p.guidanceMin) {
@@ -171,7 +211,7 @@ window.AO_ENGINE = (() => {
 
     const creditNeed = Math.max(0, p.totalCredits - a.totalCompleted);
     if (creditNeed > 0) {
-      rows.push({ type: 'Credits', item: `${creditNeed} degree credit${creditNeed === 1 ? '' : 's'} remain`, action: 'Complete approved coursework and guidance consistent with the degree categories.', contact: 'adviser' });
+      rows.push({ type: 'Credits', item: `${creditNeed} degree credit${creditNeed === 1 ? '' : 's'} remain`, action: 'Complete approved coursework and guidance consistent with the degree requirements.', contact: 'adviser' });
     }
 
     if (input.program === 'ms') {
@@ -195,25 +235,55 @@ window.AO_ENGINE = (() => {
 
   function dissertationNext(stage) {
     switch (stage) {
-      case 'research': return 'Continue dissertation research and work with your adviser/committee toward a defensible manuscript.';
+      case 'research': return 'Continue dissertation research and work with your advisor/committee toward a defensible manuscript.';
       case 'writing': return 'Complete the dissertation manuscript and prepare for committee review and defense scheduling.';
       case 'scheduled': return 'Complete the defense and final revisions; then obtain acceptance and submit final materials.';
-      default: return 'Begin dissertation planning with your adviser after the appropriate coursework and guidance.';
+      default: return 'Begin dissertation planning with your advisor after the appropriate coursework and guidance.';
     }
   }
 
   function buildNextSteps(input, a, remaining) {
+    if (!input.adviserAssigned) {
+      return [{ priority: 1, title: 'Contact the AO director to confirm your faculty advisor assignment', detail: 'Confirm your faculty advisor assignment before moving to the next checkpoint.', contact: 'programDirector' }];
+    }
+    if (!input.registrationConsulted) {
+      return [{ priority: 2, title: 'Discuss registration with your faculty advisor', detail: 'Review your course selection and progress with your advisor before moving to the next checkpoint.', contact: 'adviser' }];
+    }
+
     const steps = [];
-    if (!input.adviserAssigned) steps.push({ priority: 1, title: 'Get your faculty adviser assignment confirmed', detail: 'Confirm your adviser assignment with the Program Director.', contact: 'programDirector' });
-    if (!input.registrationConsulted) steps.push({ priority: 2, title: 'Consult your adviser before registration', detail: 'Review your course selection and progress with your adviser before registration.', contact: 'adviser' });
-    remaining.slice(0, 6).forEach((r, idx) => steps.push({ priority: 10 + idx, title: r.item, detail: r.action, contact: r.contact }));
-    if (a.warnings.length) steps.push({ priority: 90, title: 'Confirm how approved prior credit is being applied', detail: a.warnings[0], contact: 'programDirector' });
-    return steps.sort((x, y) => x.priority - y.priority).slice(0, 7);
+    const used = new Set();
+    const addRow = row => {
+      if (!row) return;
+      const key = `${row.type}|${row.item}`;
+      if (used.has(key)) return;
+      used.add(key);
+      steps.push({ priority: 10 + steps.length, title: row.item, detail: row.action, contact: row.contact });
+    };
+
+    if (input.program === 'ms') addRow(remaining.find(r => r.type === 'Logic'));
+    remaining.filter(r => r.type === 'Core').forEach(addRow);
+    addRow(remaining.find(r => r.type === 'Electives'));
+
+    if (input.hasPrior === null) {
+      steps.push({ priority: 20 + steps.length, title: 'Review experience and transfer credit', detail: 'Indicate whether you have approved prior experience or transfer credit.', contact: 'programDirector' });
+    } else if (input.hasPrior === true && a.prior === 0) {
+      steps.push({ priority: 20 + steps.length, title: 'Enter approved experience or transfer credit', detail: 'Enter the number of formally approved experience and transfer credits.', contact: 'programDirector' });
+    }
+
+    remaining.forEach(addRow);
+    if (a.warnings.length) steps.push({ priority: 90, title: 'Confirm approved experience/transfer credit', detail: a.warnings[0], contact: 'programDirector' });
+    return steps.sort((x, y) => x.priority - y.priority).slice(0, 8);
   }
+
 
   function createTimelineTasks(input, a) {
     const p = a.program;
     const tasks = [];
+
+    const futureLogicElective = input.program === 'ms' && input.logicStatus === 'failed2' ? 3 : 0;
+    if (futureLogicElective) {
+      tasks.push({ label: 'Symbolic Logic Independent Study', credits: 3, kind: 'elective', priority: 0 });
+    }
 
     a.named.core.filter(x => x.status !== 'completed').forEach(x => {
       tasks.push({ label: courseLabel(x.id), credits: 3, kind: 'core', priority: 1 });
@@ -224,7 +294,7 @@ window.AO_ENGINE = (() => {
 
     const explicitFutureCredits = tasks.reduce((s, t) => s + t.credits, 0);
     let genericNeed = Math.max(0, p.totalCredits - a.totalCompleted - explicitFutureCredits);
-    const electiveNeed = Math.max(0, p.electiveMinimum - a.electiveCompleted);
+    const electiveNeed = Math.max(0, p.electiveMinimum - a.electiveCompleted - futureLogicElective);
     genericNeed = Math.max(genericNeed, electiveNeed);
     splitIntoTasks('Approved elective / other degree coursework', genericNeed, 'elective', 20).forEach(t => tasks.push(t));
 
@@ -256,9 +326,7 @@ window.AO_ENGINE = (() => {
 
       const regularTerm = term.type === 'fall' || term.type === 'spring';
       const showTerm = regularTerm || cap > 0 || hasOverride;
-      if (showTerm) {
-        routeTerms.push({ term, tasks: termTasks, capacity: cap, baseCapacity: baseCap, hasOverride });
-      }
+      if (showTerm) routeTerms.push({ term, tasks: termTasks, capacity: cap, baseCapacity: baseCap, hasOverride });
       if (termTasks.length) scheduled.push({ term, tasks: termTasks, capacity: cap, baseCapacity: baseCap, hasOverride });
     }
 
@@ -308,5 +376,5 @@ window.AO_ENGINE = (() => {
     return { input, analysis: a, remaining, nextSteps, timeline, msConferral, phdDeadline, loadComparison, contactsUsed };
   }
 
-  return { STATUS, inferStartTerm, generateFutureTerms, courseLabel, createReport, analyze, buildTimeline, capacityForTerm };
+  return { STATUS, inferStartTerm, generateFutureTerms, courseLabel, createReport, analyze, buildTimeline, capacityForTerm, logicSatisfied };
 })();

@@ -13,27 +13,28 @@
     nextMoveTitle: $('#next-move-title'), nextMoveDetail: $('#next-move-detail'), goNext: $('#go-next'), branchSummary: $('#branch-summary'),
     loadBranches: $('#load-branches'), startTerm: $('#start-term'), includeSummer: $('#include-summer'), includeWinter: $('#include-winter'),
     routeFinish: $('#route-finish'), routeNote: $('#route-note'), timeline: $('#timeline'), summary: $('#summary-content'), changeProgram: $('#change-program'),
+    paceSection: $('.pace-section'), summarySection: $('.summary-section'),
     printBtn: $('#print-report'), copyBtn: $('#copy-report'), downloadBtn: $('#download-report')
   };
 
   const stageDefs = {
     ms: [
-      { id: 'start', label: 'Start', title: 'Set your starting point', intro: 'Confirm your adviser and registration consultation.' },
-      { id: 'logic', label: 'Logic', title: 'Satisfy Symbolic Logic', intro: 'Complete the Symbolic Logic requirement.' },
-      { id: 'core', label: 'Core', title: 'Complete the core classes', intro: 'Mark each required course when it has been completed with a B+ or better.' },
+      { id: 'start', label: 'Administrative', title: 'Complete administrative setup', intro: 'Confirm your faculty advisor assignment and discuss registration with your advisor.' },
+      { id: 'logic', label: 'Logic', title: 'Satisfy Symbolic Logic', intro: 'Select the option that reflects your current Symbolic Logic status.' },
+      { id: 'core', label: 'Core', title: 'Complete the core classes', intro: 'Mark each required course after completing it with a B+ or better.' },
       { id: 'electives', label: 'Electives', title: 'Complete electives and internships', intro: 'Enter completed elective and internship credits.' },
-      { id: 'prior', label: 'Prior credit', title: 'Apply approved prior or transfer credit', intro: 'Enter formally approved prior-learning or transfer credit.' },
-      { id: 'guidance', label: 'Project', title: 'Complete Master’s Project guidance', intro: 'Complete PHI 701 and the Master’s Project.' },
-      { id: 'application', label: 'Apply', title: 'Complete the Master’s graduation application', intro: 'Submit the Master’s Graduation Application and complete the graduation survey.' }
+      { id: 'prior', label: 'Experience/Transfer', title: 'Review experience and transfer credit', intro: 'Enter only formally approved experience or transfer credit.' },
+      { id: 'guidance', label: 'Master’s Guidance', title: 'Complete Master’s Project guidance', intro: 'Complete PHI 701 and the Master’s Project.' },
+      { id: 'application', label: 'Master’s Application', title: 'Complete the Master’s graduation application', intro: 'Submit the Master’s Graduation Application and complete the graduation survey.' }
     ],
     phd: [
-      { id: 'start', label: 'Start', title: 'Set your starting point', intro: 'Confirm your adviser and registration consultation.' },
-      { id: 'core', label: 'Core', title: 'Complete the doctoral core', intro: 'Mark each required course when it has been completed with a B+ or better.' },
+      { id: 'start', label: 'Administrative', title: 'Complete administrative setup', intro: 'Confirm your faculty advisor assignment and discuss registration with your advisor.' },
+      { id: 'core', label: 'Core', title: 'Complete the doctoral core', intro: 'Mark each required course after completing it with a B+ or better.' },
       { id: 'electives', label: 'Electives', title: 'Complete electives and internships', intro: 'Enter completed elective and internship credits.' },
-      { id: 'prior', label: 'Prior credit', title: 'Apply approved prior-learning credit', intro: 'Enter formally approved Prior Learning Assessment credit.' },
-      { id: 'research', label: 'Qualify + RCR', title: 'Move into doctoral research', intro: 'Complete the preliminary/qualifying requirement and Responsible Conduct of Research training.' },
+      { id: 'prior', label: 'Experience/Transfer', title: 'Review experience and transfer credit', intro: 'Enter only formally approved experience or transfer credit.' },
+      { id: 'research', label: 'Research', title: 'Move into doctoral research', intro: 'Complete the preliminary/qualifying requirement and Responsible Conduct of Research training.' },
       { id: 'capstone', label: 'Dissertation', title: 'Move through candidacy and dissertation work', intro: 'Track PHI 703 guidance, candidacy, and dissertation progress.' },
-      { id: 'graduate', label: 'Graduate', title: 'Complete final doctoral processing', intro: 'Complete final dissertation submission and doctoral survey requirements.' }
+      { id: 'graduate', label: 'Graduation', title: 'Complete final doctoral processing', intro: 'Complete final dissertation submission and doctoral survey requirements.' }
     ]
   };
 
@@ -59,11 +60,11 @@
       program,
       startTerm: E.inferStartTerm(), regularLoad: 2, summerLoad: 0, winterLoad: 0, termLoads: {},
       coreStatuses, electiveStatuses,
-      hasPrior: null, priorCredits: 0, priorElectiveCredits: 0,
+      hasPrior: null, experienceCredits: 0, transferCredits: 0, electiveDetailsOpen: false,
       guidanceCompleted: 0, guidanceTarget: program === 'ms' ? 3 : 12,
       internshipCompleted: 0, additionalElectiveCompleted: 0,
       adviserAssigned: false, registrationConsulted: false,
-      logicStatus: program === 'ms' ? 'not' : null,
+      logicStatus: null,
       projectStage: program === 'ms' ? 'not' : null,
       graduationApplied: false, graduationSurvey: false,
       preliminarySatisfied: false, rcrCompleted: false, atcFiled: false,
@@ -100,7 +101,7 @@
     const statuses = {};
     statuses.start = state.adviserAssigned && state.registrationConsulted;
     if (state.program === 'ms') {
-      statuses.logic = ['passed', 'iscomplete'].includes(state.logicStatus);
+      statuses.logic = E.logicSatisfied(state.logicStatus);
       statuses.core = a.coreSatisfied === p.core.length;
       statuses.electives = a.electiveCompleted >= p.electiveMinimum;
       statuses.prior = state.hasPrior === false || (state.hasPrior === true && a.prior > 0);
@@ -127,24 +128,31 @@
     if (!state) return;
     makeReport();
     const statuses = stageStatuses();
+    const administrativeComplete = Boolean(statuses.start);
+    if (!administrativeComplete && selectedStage !== 'start') selectedStage = 'start';
     const currentId = currentStageId(statuses);
     renderJourney(statuses, currentId);
     renderCheckpoint(statuses, currentId);
     renderPosition(currentId);
-    renderPace();
-    renderSummary();
+    els.paceSection.hidden = !administrativeComplete;
+    els.summarySection.hidden = !administrativeComplete;
+    if (administrativeComplete) {
+      renderPace();
+      renderSummary();
+    }
   }
 
   function renderJourney(statuses, currentId) {
     const stages = stageDefs[state.program];
+    const administrativeComplete = Boolean(statuses.start);
     els.map.style.gridTemplateColumns = `repeat(${stages.length}, minmax(88px, 1fr))`;
     els.map.innerHTML = stages.map((s, index) => {
+      const locked = !administrativeComplete && s.id !== 'start';
       const statusClass = statuses[s.id] ? 'done' : s.id === currentId ? 'current' : 'future';
       const selected = s.id === selectedStage ? ' selected' : '';
-      const branch = s.id === 'prior' && report.analysis.prior > 0 ? `<span class="node-branch">${report.analysis.prior} cr</span>` : '';
-      const icon = statuses[s.id] ? '✓' : index + 1;
-      return `<button type="button" class="journey-node ${statusClass}${selected}" data-stage="${s.id}" aria-current="${s.id === currentId ? 'step' : 'false'}">
-        <span class="dot">${icon}</span><span class="node-label">${esc(s.label)}</span>${branch}
+      const icon = statuses[s.id] ? '✓' : locked ? '🔒' : index + 1;
+      return `<button type="button" class="journey-node ${statusClass}${selected}${locked ? ' locked' : ''}" data-stage="${s.id}" aria-current="${s.id === currentId ? 'step' : 'false'}"${locked ? ' disabled aria-disabled="true" title="Complete the Administrative checkpoint first"' : ''}>
+        <span class="dot">${icon}</span><span class="node-label">${esc(s.label)}</span>
       </button>`;
     }).join('');
   }
@@ -161,9 +169,10 @@
     els.checkpointState.textContent = done ? 'Complete' : isCurrent ? 'You are here' : 'Open checkpoint';
     els.checkpointState.className = `state-badge ${done ? 'done' : isCurrent ? 'current' : ''}`;
     els.checkpointBody.innerHTML = renderStageBody(stage.id);
+    const administrativeComplete = Boolean(statuses.start);
     els.previousStage.disabled = index === 0;
-    els.nextStage.disabled = index === stages.length - 1;
-    els.nextStage.textContent = index === stages.length - 1 ? 'End of pathway' : 'Next checkpoint →';
+    els.nextStage.disabled = index === stages.length - 1 || (stage.id === 'start' && !administrativeComplete);
+    els.nextStage.textContent = index === stages.length - 1 ? 'End of pathway' : stage.id === 'start' && !administrativeComplete ? 'Complete Administrative first' : 'Next checkpoint →';
   }
 
   function choiceButtons(name, options, current) {
@@ -189,35 +198,39 @@
   function priorCreditBody() {
     const p = D.programs[state.program];
     const current = state.hasPrior === null ? 'unknown' : state.hasPrior ? 'yes' : 'no';
-    return `<div class="control-group"><h4>Do you have formally approved ${state.program === 'ms' ? 'prior-learning or transfer' : 'prior-learning'} credit?</h4>
-      ${choiceButtons('hasPrior', [{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }], current)}
-      ${state.hasPrior === true ? `<div class="branch-box"><h4>Approved credit</h4><div class="compact-grid">
-        <label class="field">Total approved credits<select data-field="priorCredits">${optionRange(p.priorLearningMax, state.priorCredits)}</select></label>
-        <label class="field">Approved toward electives<select data-field="priorElectiveCredits">${optionRange(Number(state.priorCredits), state.priorElectiveCredits)}</select></label>
-      </div>${state.program === 'ms' && Number(state.priorCredits) > 6 ? `<div class="warning-box">If more than 6 M.S. prior-learning or transfer credits are being applied, confirm the approved total with the Program Director and Graduate School.</div>` : ''}</div>` : ''}
+    const total = report.analysis.prior;
+    return `<div class="control-group"><h4>Do you have formally approved prior experience or transfer credit?</h4>
+      ${choiceButtons('hasPrior', [{ value: 'no', label: 'No approved credit' }, { value: 'yes', label: 'Yes' }], current)}
+      ${state.hasPrior === true ? `<div class="credit-path-grid">
+        <div class="credit-path-card"><h4>Prior experience credit</h4><p>To obtain this credit, demonstrate competence by passing an oral or written exam.</p>
+          <label class="field">Approved prior experience credits<select data-field="experienceCredits">${optionRange(p.priorLearningMax, state.experienceCredits)}</select></label></div>
+        <div class="credit-path-card"><h4>Transfer credit</h4><p>To obtain this credit, provide evidence of the course content (for example, a syllabus or course website) and a passing grade.</p>
+          <label class="field">Approved transfer credits<select data-field="transferCredits">${optionRange(p.priorLearningMax, state.transferCredits)}</select></label></div>
+      </div><div class="credit-total"><span>Combined approved credit</span><strong>${total} / ${p.priorLearningMax} credits</strong></div>
+      ${state.program === 'ms' && total > 6 ? `<div class="warning-box">If more than 6 M.S. experience/transfer credits are being applied, confirm the approved total with the AO Director and Graduate School.</div>` : ''}` : ''}
     </div>`;
   }
+
 
   function renderStageBody(stage) {
     const p = D.programs[state.program];
 
     if (stage === 'start') {
-      return `<div class="control-group"><h4>Do you have an assigned faculty adviser?</h4>${yesNo('adviserAssigned', state.adviserAssigned, 'Yes', 'No / not sure')}</div>
-        ${state.adviserAssigned ? `<div class="branch-line"><div class="control-group"><h4>Have you consulted your adviser about registration for the current or next term?</h4>${yesNo('registrationConsulted', state.registrationConsulted, 'Yes', 'Not yet')}</div></div>` : `<div class="note-box">After your adviser is assigned, confirm your registration consultation here.</div>`}
-        <div class="control-group"><h4>Planning start term</h4><label class="field">Start the model from<select data-field="startTerm">${E.generateFutureTerms(2034).slice(0, 34).map(t => `<option value="${t.id}"${state.startTerm === t.id ? ' selected' : ''}>${esc(t.label)}${t.official ? '' : ' (projected)'}</option>`).join('')}</select></label></div>`;
+      return `<div class="control-group"><h4>Do you have an assigned faculty advisor?</h4>${yesNo('adviserAssigned', state.adviserAssigned, 'Yes', 'No / not sure')}</div>
+        ${state.adviserAssigned ? `<div class="branch-line"><div class="control-group"><h4>Have you discussed registration for the current or next term with your advisor?</h4>${yesNo('registrationConsulted', state.registrationConsulted, 'Yes', 'Not yet')}</div></div>` : `<div class="note-box">Contact the AO director to confirm your faculty advisor assignment.</div>`}`;
     }
 
     if (stage === 'logic' && state.program === 'ms') {
-      return `<div class="control-group"><h4>How is the Symbolic Logic requirement satisfied?</h4>${choiceButtons('logicStatus', [
-        { value: 'passed', label: 'Competency exam passed' },
-        { value: 'iscomplete', label: 'Symbolic Logic Independent Study completed with B+ or better' },
-        { value: 'not', label: 'Not yet satisfied' }
-      ], state.logicStatus)}
-      ${['not', 'failed1', 'failed2'].includes(state.logicStatus) ? `<div class="branch-box"><h4>If it is not yet satisfied</h4>${choiceButtons('logicStatus', [
-        { value: 'not', label: 'No successful attempt yet' },
-        { value: 'failed1', label: 'One unsuccessful exam attempt' },
-        { value: 'failed2', label: 'Two unsuccessful exam attempts' }
-      ], state.logicStatus)}</div>` : ''}</div>`;
+      const logicOptions = [
+        ['passed', 'Competency exam passed'],
+        ['iscomplete', 'B+ or better in <strong>Symbolic Logic Independent Study</strong>'],
+        ['mindtap', 'Completed MindTap course'],
+        ['failed1', 'One unsuccessful exam attempt'],
+        ['failed2', 'Two unsuccessful exam attempts'],
+        ['not', 'Not satisfied']
+      ];
+      return `<div class="control-group logic-control"><div><h4>How is the Symbolic Logic requirement satisfied?</h4><p>Select the option that matches your current status.</p>${state.logicStatus === 'iscomplete' ? '<div class="note-box">3 credits from Symbolic Logic Independent Study are automatically counted toward electives.</div>' : ''}</div>
+        <div class="choice-row logic-choices" role="group" aria-label="Symbolic Logic status">${logicOptions.map(([value, label]) => `<button type="button" class="choice-button${state.logicStatus === value ? ' selected' : ''}" data-set="logicStatus" data-value="${value}">${label}</button>`).join('')}</div></div>`;
     }
 
     if (stage === 'core') {
@@ -225,11 +238,13 @@
     }
 
     if (stage === 'electives') {
-      return `<div class="control-group"><h4>Completed elective credits</h4><p>Use this for approved elective credits not identified by a named course below. Do not double-count the same course.</p>
-        <label class="field">Completed elective credits<select data-field="additionalElectiveCompleted">${optionRange(state.program === 'ms' ? 30 : 48, state.additionalElectiveCompleted)}</select></label></div>
+      const logicNote = state.program === 'ms' && state.logicStatus === 'iscomplete' ? '<div class="note-box">3 elective credits from Symbolic Logic Independent Study are already included below.</div>' : '';
+      return `<div class="elective-total"><span>Elective credits counted</span><strong>${report.analysis.electiveCompleted} / ${p.electiveMinimum}</strong></div>${logicNote}
+        <div class="control-group"><h4>Other completed elective credits</h4><p>Enter approved elective credits not represented by a named course, internship, or the Symbolic Logic Independent Study. Do not double-count the same credits.</p>
+        <label class="field">Other completed elective credits<select data-field="additionalElectiveCompleted">${optionRange(state.program === 'ms' ? 30 : 48, state.additionalElectiveCompleted)}</select></label></div>
         <div class="control-group"><h4>Completed internship credits</h4>
           <label class="field">Completed internship credits<select data-field="internshipCompleted">${optionRange(p.internshipMax, state.internshipCompleted)}</select></label></div>
-        <details class="advanced"><summary>Optional: identify specific elective courses</summary><div class="course-stack">${p.electiveCourses.map(id => courseStatusSelect(id, false)).join('')}</div></details>`;
+        <details class="advanced"${state.electiveDetailsOpen ? ' open' : ''}><summary>Optional: identify specific elective courses</summary><div class="course-stack">${p.electiveCourses.map(id => courseStatusSelect(id, false)).join('')}</div></details>`;
     }
 
     if (stage === 'prior') return priorCreditBody();
@@ -290,10 +305,11 @@
     els.goNext.dataset.targetStage = stageForNextMove(next, currentId);
 
     const chips = [];
-    if (a.prior > 0) chips.push(['Approved prior credit', `${a.prior} cr`]);
+    if (a.experienceCredits > 0) chips.push(['Experience credit', `${a.experienceCredits} cr`]);
+    if (a.transferCredits > 0) chips.push(['Transfer credit', `${a.transferCredits} cr`]);
     if (a.electiveCompleted > 0) chips.push(['Elective progress', `${a.electiveCompleted}/${p.electiveMinimum} cr`]);
     if (a.guidanceCompleted > 0) chips.push([state.program === 'ms' ? 'PHI 701 complete' : 'PHI 703 complete', `${a.guidanceCompleted} cr`]);
-    if (state.program === 'ms' && ['passed', 'iscomplete'].includes(state.logicStatus)) chips.push(['Symbolic Logic', 'Satisfied']);
+    if (state.program === 'ms' && E.logicSatisfied(state.logicStatus)) chips.push(['Symbolic Logic', 'Satisfied']);
     if (state.program === 'phd' && state.preliminarySatisfied) chips.push(['Qualifying', 'Satisfied']);
     els.branchSummary.innerHTML = chips.map(([k, v]) => `<div class="branch-chip"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('');
   }
@@ -301,7 +317,7 @@
   function stageForNextMove(next, fallback) {
     if (!next) return fallback;
     const text = `${next.title} ${next.detail}`.toLowerCase();
-    if (text.includes('adviser') || text.includes('registration')) return 'start';
+    if (text.includes('advisor') || text.includes('adviser') || text.includes('registration')) return 'start';
     if (state.program === 'ms' && text.includes('symbolic')) return 'logic';
     if (text.includes('phi 60') || text.includes('phi 51') || text.includes('required course')) return 'core';
     if (text.includes('elective') || text.includes('internship')) return 'electives';
@@ -399,8 +415,7 @@
     els.summary.innerHTML = `<div class="summary-panel"><h3>What to do next</h3>${nextHtml}</div>
       <div class="summary-panel"><h3>Still showing as incomplete</h3>${remainingHtml}</div>
       ${warningHtml}
-      <div class="summary-panel"><h3>Who to contact</h3>${report.contactsUsed.length ? `<ul>${report.contactsUsed.map(c => `<li><strong>${esc(c.role)}</strong>${c.name ? ` — ${esc(c.name)}` : ''}${c.email ? ` · <a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}<br>${esc(c.when)}</li>`).join('')}</ul>` : '<p>Your adviser remains the first contact for course and progress questions.</p>'}</div>
-      <div class="source-line"><strong>Planning aid:</strong> this page does not access HUB and does not save selections. Verify course offerings, registration dates, and degree clearance in official UB systems.</div>`;
+      <div class="summary-panel"><h3>Who to contact</h3>${report.contactsUsed.length ? `<ul>${report.contactsUsed.map(c => `<li><strong>${esc(c.role)}</strong>${c.name ? ` — ${esc(c.name)}` : ''}${c.email ? ` · <a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : ''}<br>${esc(c.when)}</li>`).join('')}</ul>` : '<p>Your advisor remains the first contact for course and progress questions.</p>'}</div>`;
   }
 
   function setBoolean(field, value) {
@@ -410,7 +425,7 @@
   function handleChoice(field, value) {
     if (field === 'hasPrior') {
       state.hasPrior = value === 'yes';
-      if (!state.hasPrior) { state.priorCredits = 0; state.priorElectiveCredits = 0; }
+      if (!state.hasPrior) { state.experienceCredits = 0; state.transferCredits = 0; }
     } else if (['adviserAssigned', 'registrationConsulted', 'preliminarySatisfied', 'rcrCompleted', 'atcFiled', 'graduationApplied', 'graduationSurvey', 'mFormSubmitted', 'etdSubmitted', 'doctoralSurveys'].includes(field)) {
       setBoolean(field, value);
       if (field === 'adviserAssigned' && !state.adviserAssigned) state.registrationConsulted = false;
@@ -424,8 +439,8 @@
   function normalizeState() {
     const p = D.programs[state.program];
     if (!state.termLoads || typeof state.termLoads !== 'object') state.termLoads = {};
-    state.priorCredits = Math.max(0, Math.min(p.priorLearningMax, Number(state.priorCredits || 0)));
-    state.priorElectiveCredits = Math.max(0, Math.min(state.priorCredits, Number(state.priorElectiveCredits || 0)));
+    state.experienceCredits = Math.max(0, Math.min(p.priorLearningMax, Number(state.experienceCredits || 0)));
+    state.transferCredits = Math.max(0, Math.min(p.priorLearningMax - state.experienceCredits, Number(state.transferCredits || 0)));
     state.guidanceTarget = Math.max(p.guidanceMin, Math.min(p.guidanceMax, Number(state.guidanceTarget || p.guidanceMin)));
     state.guidanceCompleted = Math.max(0, Math.min(state.guidanceTarget, Number(state.guidanceCompleted || 0)));
     state.internshipCompleted = Math.max(0, Math.min(p.internshipMax, Number(state.internshipCompleted || 0)));
@@ -435,8 +450,14 @@
   function handleField(el) {
     const field = el.dataset.field;
     if (!field) return;
-    const numeric = ['priorCredits', 'priorElectiveCredits', 'guidanceCompleted', 'guidanceTarget', 'internshipCompleted', 'additionalElectiveCompleted'];
+    const numeric = ['experienceCredits', 'transferCredits', 'guidanceCompleted', 'guidanceTarget', 'internshipCompleted', 'additionalElectiveCompleted'];
     state[field] = numeric.includes(field) ? Number(el.value) : el.value;
+    if (field === 'experienceCredits' && state.experienceCredits + state.transferCredits > D.programs[state.program].priorLearningMax) {
+      state.transferCredits = Math.max(0, D.programs[state.program].priorLearningMax - state.experienceCredits);
+    }
+    if (field === 'transferCredits' && state.experienceCredits + state.transferCredits > D.programs[state.program].priorLearningMax) {
+      state.experienceCredits = Math.max(0, D.programs[state.program].priorLearningMax - state.transferCredits);
+    }
     if (field === 'startTerm') {
       els.startTerm.value = el.value;
       state.termLoads = {};
@@ -447,6 +468,8 @@
 
   function selectStage(id, scroll = false) {
     if (!stageDefs[state.program].some(s => s.id === id)) return;
+    const administrativeComplete = state.adviserAssigned && state.registrationConsulted;
+    if (!administrativeComplete && id !== 'start') id = 'start';
     selectedStage = id;
     renderAll();
     if (scroll) $('#checkpoint').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -471,7 +494,7 @@
       lines.push('', 'ITEMS TO CONFIRM');
       a.warnings.forEach(w => lines.push(`- ${w}`));
     }
-    lines.push('', 'Planning aid only. Nothing entered into this page is stored by the application. Verify official records, requirements, offerings, and deadlines with UB.');
+    lines.push('', 'Nothing entered into this page is stored by the application.');
     return lines.join('\n');
   }
 
@@ -526,10 +549,17 @@
       const kind = event.target.dataset.kind;
       const id = event.target.dataset.course;
       if (kind === 'core') state.coreStatuses[id] = event.target.value;
-      else state.electiveStatuses[id] = event.target.value;
+      else {
+        state.electiveStatuses[id] = event.target.value;
+        state.electiveDetailsOpen = true;
+      }
       renderAll();
     }
   });
+
+  document.addEventListener('toggle', event => {
+    if (state && event.target.matches('details.advanced')) state.electiveDetailsOpen = event.target.open;
+  }, true);
 
   els.previousStage.addEventListener('click', () => {
     const stages = stageDefs[state.program];

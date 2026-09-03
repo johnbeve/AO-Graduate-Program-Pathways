@@ -20,11 +20,11 @@
       startTerm: 'fall-2026', regularLoad: 2, summerLoad: 0, winterLoad: 0, termLoads: {},
       coreStatuses: Object.fromEntries(p.core.map(id => [id, 'not'])),
       electiveStatuses: Object.fromEntries(p.electiveCourses.map(id => [id, 'not'])),
-      hasPrior: null, priorCredits: 0, priorElectiveCredits: 0,
+      hasPrior: null, experienceCredits: 0, transferCredits: 0, electiveDetailsOpen: false,
       guidanceCompleted: 0, guidanceTarget: p.guidanceMin,
       internshipCompleted: 0, additionalElectiveCompleted: 0,
       adviserAssigned: false, registrationConsulted: false,
-      logicStatus: 'not', projectStage: 'not', graduationApplied: false, graduationSurvey: false,
+      logicStatus: null, projectStage: 'not', graduationApplied: false, graduationSurvey: false,
       preliminarySatisfied: false, rcrCompleted: false, atcFiled: false, dissertationStage: 'not',
       mFormSubmitted: false, etdSubmitted: false, doctoralSurveys: false
     };
@@ -67,18 +67,63 @@
     truthy(a.academicComplete, 'M.S. academic completion should be true');
   });
 
-  test('M.S. entry above 6 approved prior credits triggers the source-conflict warning', () => {
+  test('M.S. entry above 6 approved experience/transfer credits triggers the source-conflict warning', () => {
     const i = base('ms');
-    i.priorCredits = 9;
+    i.experienceCredits = 6;
+    i.transferCredits = 3;
     const a = E.analyze(i);
     truthy(a.warnings.some(w => w.includes('more than 6 M.S.')), 'Expected prior-credit warning');
   });
 
   test('Ph.D. PLA is capped at 36 credits', () => {
     const i = base('phd');
-    i.priorCredits = 45;
+    i.experienceCredits = 30;
+    i.transferCredits = 15;
     const a = E.analyze(i);
     eq(a.prior, 36);
+  });
+
+  test('Symbolic Logic Independent Study contributes 3 elective and degree credits', () => {
+    const i = base('ms');
+    i.logicStatus = 'iscomplete';
+    const a = E.analyze(i);
+    eq(a.logicElectiveCredits, 3);
+    eq(a.electiveCompleted, 3);
+    eq(a.totalCompleted, 3);
+  });
+
+  test('MindTap can satisfy the M.S. Symbolic Logic checkpoint without adding degree credit', () => {
+    const i = base('ms');
+    i.logicStatus = 'mindtap';
+    const a = E.analyze(i);
+    truthy(E.logicSatisfied(i.logicStatus), 'MindTap should satisfy the logic requirement');
+    eq(a.logicElectiveCredits, 0);
+  });
+
+  test('Experience and transfer credit are counted separately but share the program cap', () => {
+    const i = base('ms');
+    i.experienceCredits = 6;
+    i.transferCredits = 6;
+    const a = E.analyze(i);
+    eq(a.experienceCredits, 6);
+    eq(a.transferCredits, 6);
+    eq(a.prior, 12);
+    eq(a.electiveCompleted, 0, 'Experience/transfer credit should not automatically count toward electives');
+  });
+
+  test('Two unsuccessful logic exam attempts direct the student to enroll in the Independent Study', () => {
+    const i = base('ms');
+    i.adviserAssigned = true;
+    i.registrationConsulted = true;
+    i.logicStatus = 'failed2';
+    const r = E.createReport(i);
+    eq(r.nextSteps[0].title, 'Enroll in Symbolic Logic Independent Study');
+  });
+
+  test('Without an advisor assignment the administrative action is the only immediate next move', () => {
+    const r = E.createReport(base('ms'));
+    eq(r.nextSteps.length, 1);
+    eq(r.nextSteps[0].title, 'Contact the AO director to confirm your faculty advisor assignment');
   });
 
   test('Course-load selection materially changes the M.S. route', () => {

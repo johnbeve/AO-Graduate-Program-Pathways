@@ -1,59 +1,75 @@
 # UB Applied Ontology Degree Progress Planner
 
-## Visual pathway interface
+A static, privacy-preserving GitHub Pages application for University at Buffalo Applied Ontology M.S. and Ph.D. students.
 
-This is a static, privacy-preserving GitHub Pages application for University at Buffalo Applied Ontology M.S. and Ph.D. students.
+## Student experience
 
-The interface is intentionally linear and progressive: students choose a degree, move through visible checkpoints, and see the route change as requirements are satisfied. The first unresolved checkpoint is marked **You are here**. Only the controls relevant to the selected checkpoint are shown.
+The planner uses a progressive pathway rather than a long form. Students choose a degree, complete checkpoints, and see their credit position, next action, and possible course-load routes update immediately.
+
+The **Administrative** checkpoint is a gate. Students must indicate that they have:
+
+1. an assigned faculty advisor, and
+2. discussed registration with that advisor.
+
+Until both are confirmed, later checkpoints and route planning remain locked.
 
 ### M.S. pathway
 
-1. Start / adviser setup
-2. Symbolic Logic
-3. Core courses
-4. Electives and internships
-5. Approved prior-learning / transfer credit
-6. PHI 701 and the Master’s Project
-7. Master’s Graduation Application
+1. **Administrative**
+2. **Logic**
+3. **Core**
+4. **Electives**
+5. **Experience/Transfer**
+6. **Master’s Guidance**
+7. **Master’s Application**
 
 The M.S. has one culminating experience in this planner: the **Master’s Project**.
 
+The Symbolic Logic checkpoint includes competency-exam, Independent Study, MindTap, and unsuccessful-attempt states. Completing the Symbolic Logic Independent Study with a B+ or better automatically contributes 3 elective credits.
+
 ### Ph.D. pathway
 
-1. Start / adviser setup
-2. Core courses
-3. Electives and internships
-4. Approved prior-learning credit
-5. Preliminary/qualifying requirement + RCR
-6. PHI 703, candidacy and dissertation
-7. Final doctoral processing
+1. **Administrative**
+2. **Core**
+3. **Electives**
+4. **Experience/Transfer**
+5. **Research**
+6. **Dissertation**
+7. **Graduation**
 
-## Credit-status choices
+## Course status choices
 
-Named course controls are deliberately simple and consistent across both degrees:
+Named courses use the same choices across both degrees:
 
 - Not yet
 - Satisfied — B+ or better
 - Completed below B+
 
-Only completed credit is counted toward completed degree requirements.
+Only courses marked **Satisfied — B+ or better** count as completed requirements in the planner.
+
+## Experience and transfer credit
+
+The planner treats these as separate inputs:
+
+- **Prior experience credit** — students are instructed that competence must be demonstrated by passing an oral or written exam.
+- **Transfer credit** — students are instructed to provide evidence of course content, such as a syllabus or course website, together with a passing grade.
+
+The planner counts approved experience/transfer credit toward total degree credits. It does not automatically assign those credits to the elective minimum.
 
 ## Course-load simulator
 
-The **How fast do you want to move?** section compares 1–5 courses per regular Fall/Spring semester. Selecting a load immediately:
+After the Administrative checkpoint is complete, the **How fast do you want to move?** section compares 1–5 courses per regular Fall/Spring semester.
 
-- highlights that route,
-- updates the selected-route heading,
-- reallocates remaining modeled courses across terms, and
-- changes the modeled finish term.
+Students can then customize each generated semester individually:
 
-Optional Summer and Winter study can also be toggled on. This is a capacity model rather than a course-offering guarantee.
+- Fall/Spring: 0–5 courses
+- Summer/Winter: 0–1 course when enabled
 
-Students can then customize each generated semester individually. Fall/Spring terms allow 0–5 courses; Summer/Winter terms allow 0–1 course when enabled. Setting a term to 0 moves remaining coursework later and immediately recalculates the finish term.
+Setting a term to 0 moves remaining coursework later and recalculates the finish term. The route is a planning model, not a guarantee that a particular course will be offered in a particular term.
 
 ## Privacy architecture
 
-There is no server-side application and no database. The site intentionally uses:
+There is no server-side application and no database. The site uses:
 
 - no login
 - no form submission
@@ -92,25 +108,12 @@ The included `.nojekyll` file tells GitHub Pages to serve the static files direc
 ## Project structure
 
 - `js/data.js` — requirements, course-number mappings, terms, contacts and links.
-- `js/engine.js` — credit calculations and timeline simulation.
+- `js/engine.js` — credit calculations, next-step rules and timeline simulation.
 - `js/app.js` — progressive pathway interface and report output.
 - `css/styles.css` — presentation.
 - `SOURCE_NOTES.md` — rule and maintenance notes.
-- `tests.html` + `js/tests.js` — browser smoke tests.
-
-## Important limitations
-
-- This is not HUB and not an official degree audit.
-- Course availability is not inferred. Students must verify offerings and class-specific deadlines in HUB.
-- The M.S. source materials use different limits for some forms of prior credit; the planner flags entries above the handbook's 6-credit figure for confirmation rather than resolving that policy question itself.
-- The Ph.D. proposal permits up to 36 PLA credits but does not specify exactly which categories those credits replace; named core requirements therefore remain explicit.
-- The supplied Ph.D. proposal does not define the AO program's exact internal preliminary/qualifying mechanism, so the planner tracks the generic requirement without inventing a program-specific sequence.
+- `tests.html` + `js/tests.js` — browser calculation tests.
 
 ## Tests
 
 Open `tests.html` in a browser. A passing build should report `0 failures`.
-
-
-## Interface copy
-
-Checkpoint copy is intentionally action-oriented. The page keeps directions students need to follow and moves source rationale or modeling notes out of the main workflow.
