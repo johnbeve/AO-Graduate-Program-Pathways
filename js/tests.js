@@ -25,7 +25,7 @@
       guidanceCompleted: 0,
       internshipCompleted: 0, additionalElectiveCompleted: 0,
       adviserAssigned: false, registrationConsulted: false,
-      logicStatus: null, phdLogicSatisfied: false,
+      logicStatus: null,
       projectStage: 'not', graduationApplied: false, graduationSurvey: false,
       qualifyingPassed: false, dissertationCommitteeFormed: false, topicalSubmitted: false, topicalDefensePassed: false,
       rcrCompleted: false, atcFiled: false, dissertationStage: 'not'
@@ -148,19 +148,30 @@
     eq(r.nextSteps[0].title, 'Contact the AO director to confirm your faculty advisor assignment');
   });
 
-  test('Ph.D. logic competency appears before later doctoral milestones', () => {
+  test('Ph.D. uses the same Symbolic Logic checkpoint as the M.S.', () => {
     const i = base('phd');
     i.adviserAssigned = true;
     i.registrationConsulted = true;
     const r = E.createReport(i);
-    eq(r.nextSteps[0].title, 'Ph.D. logic competency');
+    eq(r.nextSteps[0].title, 'Satisfy the Symbolic Logic requirement');
+    i.logicStatus = 'passed';
+    truthy(E.logicSatisfied(i.logicStatus));
+  });
+
+  test('Symbolic Logic Independent Study contributes 3 Ph.D. elective and degree credits', () => {
+    const i = base('phd');
+    i.logicStatus = 'iscomplete';
+    const a = E.analyze(i);
+    eq(a.logicElectiveCredits, 3);
+    eq(a.electiveCompleted, 3);
+    eq(a.totalCompleted, 3);
   });
 
   test('Ph.D. qualifying examination is required', () => {
     const i = base('phd');
     i.adviserAssigned = true;
     i.registrationConsulted = true;
-    i.phdLogicSatisfied = true;
+    i.logicStatus = 'passed';
     const r = E.createReport(i);
     truthy(r.remaining.some(x => x.type === 'Qualifying Examination'));
   });

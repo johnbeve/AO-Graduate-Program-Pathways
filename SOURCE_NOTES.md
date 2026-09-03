@@ -33,7 +33,7 @@ If no advisor is assigned, the next action shown is: **Contact the AO director t
 
 ## 3. Symbolic Logic
 
-The M.S. Symbolic Logic checkpoint permits the following states:
+The M.S. and Ph.D. use the same Symbolic Logic checkpoint, which permits the following states:
 
 - Competency exam passed.
 - B+ or better in Symbolic Logic Independent Study.
@@ -142,4 +142,4 @@ The planner does not request or adjudicate:
 - individual exceptions not formally approved,
 - dissertation quality beyond the broad stage selected by the student.
 
-- The current Ph.D. interface also tracks a Logic competency checkpoint, a faculty-panel Qualifying Examination, dissertation committee formation, topical submission, and a Topical Defense leading to ABD status, based on the program rules supplied by the user for this revision.
+- The current Ph.D. interface uses the same Symbolic Logic competency checkpoint as the M.S., and also tracks a faculty-panel Qualifying Examination, dissertation committee formation, topical submission, and a Topical Defense leading to ABD status, based on the program rules supplied by the user for this revision.

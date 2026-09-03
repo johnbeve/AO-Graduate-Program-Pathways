@@ -114,9 +114,9 @@ window.AO_ENGINE = (() => {
     }, 0);
     const electiveRoom = program.electiveMax == null ? program.totalCredits : Math.max(0, program.electiveMax - namedElectiveCompleted);
     const additionalElectiveCompleted = clamp(n(input.additionalElectiveCompleted), 0, electiveRoom);
-    const logicElectiveCredits = input.program === 'ms' && input.logicStatus === 'iscomplete' ? 3 : 0;
+    const logicElectiveCredits = input.logicStatus === 'iscomplete' ? 3 : 0;
     const electiveCompleted = input.program === 'phd'
-      ? namedElectiveCompleted + additionalElectiveCompleted
+      ? namedElectiveCompleted + additionalElectiveCompleted + logicElectiveCredits
       : namedElectiveCompleted + internshipCompleted + additionalElectiveCompleted + logicElectiveCredits;
 
     const totalCompletedRaw = coreCompleted + namedElectiveCompleted + internshipCompleted + additionalElectiveCompleted + logicElectiveCredits + guidanceCompleted + prior;
@@ -134,7 +134,7 @@ window.AO_ENGINE = (() => {
 
     const academicComplete = program.id === 'ms'
       ? coreSatisfied === program.core.length && guidanceCompleted >= program.guidanceMin && electiveCompleted >= program.electiveMinimum && totalCompleted >= program.totalCredits && logicSatisfied(input.logicStatus) && input.projectStage === 'completed'
-      : coreSatisfied === program.core.length && guidanceCompleted >= program.guidanceMin && electiveCompleted >= program.electiveMinimum && electiveCompleted <= program.electiveMax && totalCompleted >= program.totalCredits && input.phdLogicSatisfied && input.qualifyingPassed && input.dissertationCommitteeFormed && input.topicalSubmitted && input.topicalDefensePassed && input.rcrCompleted && input.atcFiled && input.dissertationStage === 'defended';
+      : coreSatisfied === program.core.length && guidanceCompleted >= program.guidanceMin && electiveCompleted >= program.electiveMinimum && electiveCompleted <= program.electiveMax && totalCompleted >= program.totalCredits && logicSatisfied(input.logicStatus) && input.qualifyingPassed && input.dissertationCommitteeFormed && input.topicalSubmitted && input.topicalDefensePassed && input.rcrCompleted && input.atcFiled && input.dissertationStage === 'defended';
 
     return {
       program,
@@ -187,12 +187,8 @@ window.AO_ENGINE = (() => {
     const p = a.program;
     const rows = [];
 
-    if (input.program === 'ms') {
-      const logicRow = logicRequirementRow(input);
-      if (logicRow) rows.push(logicRow);
-    } else if (!input.phdLogicSatisfied) {
-      rows.push({ type: 'Logic', item: 'Ph.D. logic competency', action: 'Pass the Ph.D. logic competency requirement.', contact: 'adviser' });
-    }
+    const logicRow = logicRequirementRow(input);
+    if (logicRow) rows.push(logicRow);
 
     a.coreRemaining.forEach(x => {
       const action = x.status === 'lowgrade'
@@ -283,7 +279,7 @@ window.AO_ENGINE = (() => {
     const p = a.program;
     const tasks = [];
 
-    const futureLogicElective = input.program === 'ms' && input.logicStatus === 'failed2' ? 3 : 0;
+    const futureLogicElective = input.logicStatus === 'failed2' ? 3 : 0;
     if (futureLogicElective) {
       tasks.push({ label: 'Symbolic Logic Independent Study', credits: 3, kind: 'elective', priority: 0 });
     }

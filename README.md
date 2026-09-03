@@ -25,7 +25,7 @@ Until both are confirmed, later checkpoints and route planning remain locked.
 
 The M.S. has one culminating experience in this planner: the **Master’s Project**.
 
-The Symbolic Logic checkpoint includes competency-exam, Independent Study, MindTap, and unsuccessful-attempt states. Completing the Symbolic Logic Independent Study with a B+ or better automatically contributes 3 elective credits.
+The same Symbolic Logic checkpoint is used for both the M.S. and Ph.D. It includes competency-exam, Independent Study, MindTap, and unsuccessful-attempt states. Completing the Symbolic Logic Independent Study with a B+ or better automatically contributes 3 elective credits.
 
 ### Ph.D. pathway
 
@@ -122,4 +122,4 @@ Open `tests.html` in a browser. A passing build should report `0 failures`.
 
 ### Current Ph.D. milestone sequence
 
-The Ph.D. pathway includes Administrative, Logic, Core, Electives, Experience/Transfer, Qualifying Examination, Topical Defense, and Dissertation checkpoints. The Topical Defense sequence asks whether the dissertation committee has been formed, whether the topical has been submitted to that committee, and whether the defense has been passed; passing marks the student as ABD in the planner.
+The Ph.D. pathway includes Administrative, Logic, Core, Electives, Experience/Transfer, Qualifying Examination, Topical Defense, and Dissertation checkpoints. Its Logic checkpoint uses the same Symbolic Logic options and rules as the M.S. The Topical Defense sequence asks whether the dissertation committee has been formed, whether the topical has been submitted to that committee, and whether the defense has been passed; passing marks the student as ABD in the planner.
