@@ -29,12 +29,13 @@
     ],
     phd: [
       { id: 'start', label: 'Administrative', title: 'Complete administrative setup', intro: 'Confirm your faculty advisor assignment and discuss registration with your advisor.' },
+      { id: 'logic', label: 'Logic', title: 'Complete the logic competency checkpoint', intro: 'Indicate whether you have passed the Ph.D. logic competency requirement.' },
       { id: 'core', label: 'Core', title: 'Complete the doctoral core', intro: 'Mark each required course after completing it with a B+ or better.' },
       { id: 'electives', label: 'Electives', title: 'Complete electives and internships', intro: 'Enter completed elective and internship credits.' },
       { id: 'prior', label: 'Experience/Transfer', title: 'Review experience and transfer credit', intro: 'Enter only formally approved experience or transfer credit.' },
-      { id: 'research', label: 'Research', title: 'Move into doctoral research', intro: 'Complete the preliminary/qualifying requirement and Responsible Conduct of Research training.' },
-      { id: 'capstone', label: 'Dissertation', title: 'Move through candidacy and dissertation work', intro: 'Track PHI 703 guidance, candidacy, and dissertation progress.' },
-      { id: 'graduate', label: 'Graduation', title: 'Complete final doctoral processing', intro: 'Complete final dissertation submission and doctoral survey requirements.' }
+      { id: 'qualifying', label: 'Qualifying Examination', title: 'Complete the Qualifying Examination', intro: 'Indicate whether you have passed the faculty-panel Qualifying Examination.' },
+      { id: 'topical', label: 'Topical Defense', title: 'Complete the Topical Defense', intro: 'Form your dissertation committee, submit the topical, and complete the Topical Defense.' },
+      { id: 'capstone', label: 'Dissertation', title: 'Complete dissertation guidance and defense', intro: 'Track PHI 703 guidance, candidacy, and the dissertation defense.' }
     ]
   };
 
@@ -60,16 +61,17 @@
       program,
       startTerm: E.inferStartTerm(), regularLoad: 2, summerLoad: 0, winterLoad: 0, termLoads: {},
       coreStatuses, electiveStatuses,
+      electiveCreditsByCourse: Object.fromEntries(p.electiveCourses.map(id => [id, 3])),
       hasPrior: null, experienceCredits: 0, transferCredits: 0, electiveDetailsOpen: false,
-      guidanceCompleted: 0, guidanceTarget: program === 'ms' ? 3 : 12,
+      guidanceCompleted: 0,
       internshipCompleted: 0, additionalElectiveCompleted: 0,
       adviserAssigned: false, registrationConsulted: false,
-      logicStatus: null,
+      logicStatus: null, phdLogicSatisfied: false,
       projectStage: program === 'ms' ? 'not' : null,
       graduationApplied: false, graduationSurvey: false,
-      preliminarySatisfied: false, rcrCompleted: false, atcFiled: false,
-      dissertationStage: program === 'phd' ? 'not' : null,
-      mFormSubmitted: false, etdSubmitted: false, doctoralSurveys: false
+      qualifyingPassed: false, dissertationCommitteeFormed: false, topicalSubmitted: false, topicalDefensePassed: false,
+      rcrCompleted: false, atcFiled: false,
+      dissertationStage: program === 'phd' ? 'not' : null
     };
   }
 
@@ -108,12 +110,13 @@
       statuses.guidance = a.guidanceCompleted >= p.guidanceMin && state.projectStage === 'completed';
       statuses.application = a.academicComplete && state.graduationApplied && state.graduationSurvey;
     } else {
+      statuses.logic = state.phdLogicSatisfied;
       statuses.core = a.coreSatisfied === p.core.length;
-      statuses.electives = a.electiveCompleted >= p.electiveMinimum;
+      statuses.electives = a.electiveCompleted >= p.electiveMinimum && (p.electiveMax == null || a.electiveCompleted <= p.electiveMax);
       statuses.prior = state.hasPrior === false || (state.hasPrior === true && a.prior > 0);
-      statuses.research = state.preliminarySatisfied && state.rcrCompleted;
-      statuses.capstone = a.guidanceCompleted >= p.guidanceMin && state.atcFiled && state.dissertationStage === 'defended';
-      statuses.graduate = a.academicComplete && state.mFormSubmitted && state.etdSubmitted && state.doctoralSurveys;
+      statuses.qualifying = state.qualifyingPassed;
+      statuses.topical = state.dissertationCommitteeFormed && state.topicalSubmitted && state.topicalDefensePassed;
+      statuses.capstone = a.guidanceCompleted >= p.guidanceMin && state.rcrCompleted && state.atcFiled && state.dissertationStage === 'defended';
     }
     return statuses;
   }
@@ -187,8 +190,11 @@
       ['completed', 'Satisfied — B+ or better'],
       ['lowgrade', 'Completed below B+']
     ];
+    const creditControl = !required && current === 'completed'
+      ? `<label class="mini-credit">Credits <select data-elective-credits="${esc(id)}" aria-label="Credits for ${esc(c.code)}">${[1,2,3].map(x => `<option value="${x}"${Number(state.electiveCreditsByCourse[id] || 3) === x ? ' selected' : ''}>${x}</option>`).join('')}</select></label>`
+      : '';
     return `<div class="course-item"><div><strong>${esc(c.code)} · ${esc(c.title)}</strong>${c.former ? `<small>formerly ${esc(c.former)}</small>` : ''}</div>
-      <select data-course="${esc(id)}" data-kind="${required ? 'core' : 'elective'}" aria-label="Status for ${esc(c.code)}">${options.map(([v, l]) => `<option value="${v}"${current === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
+      <div class="course-controls"><select data-course="${esc(id)}" data-kind="${required ? 'core' : 'elective'}" aria-label="Status for ${esc(c.code)}">${options.map(([v, l]) => `<option value="${v}"${current === v ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>${creditControl}</div></div>`;
   }
 
   function yesNo(name, current, yesLabel = 'Yes', noLabel = 'Not yet') {
@@ -199,15 +205,16 @@
     const p = D.programs[state.program];
     const current = state.hasPrior === null ? 'unknown' : state.hasPrior ? 'yes' : 'no';
     const total = report.analysis.prior;
+    const experienceMax = Math.max(0, p.priorLearningMax - Number(state.transferCredits || 0));
+    const transferMax = Math.max(0, p.priorLearningMax - Number(state.experienceCredits || 0));
     return `<div class="control-group"><h4>Do you have formally approved prior experience or transfer credit?</h4>
       ${choiceButtons('hasPrior', [{ value: 'no', label: 'No approved credit' }, { value: 'yes', label: 'Yes' }], current)}
       ${state.hasPrior === true ? `<div class="credit-path-grid">
         <div class="credit-path-card"><h4>Prior experience credit</h4><p>To obtain this credit, demonstrate competence by passing an oral or written exam.</p>
-          <label class="field">Approved prior experience credits<select data-field="experienceCredits">${optionRange(p.priorLearningMax, state.experienceCredits)}</select></label></div>
+          <label class="field">Approved prior experience credits<select data-field="experienceCredits">${optionRange(experienceMax, state.experienceCredits, 1)}</select></label></div>
         <div class="credit-path-card"><h4>Transfer credit</h4><p>To obtain this credit, provide evidence of the course content (for example, a syllabus or course website) and a passing grade.</p>
-          <label class="field">Approved transfer credits<select data-field="transferCredits">${optionRange(p.priorLearningMax, state.transferCredits)}</select></label></div>
-      </div><div class="credit-total"><span>Combined approved credit</span><strong>${total} / ${p.priorLearningMax} credits</strong></div>
-      ${state.program === 'ms' && total > 6 ? `<div class="warning-box">If more than 6 M.S. experience/transfer credits are being applied, confirm the approved total with the AO Director and Graduate School.</div>` : ''}` : ''}
+          <label class="field">Approved transfer credits<select data-field="transferCredits">${optionRange(transferMax, state.transferCredits, 1)}</select></label></div>
+      </div><div class="credit-total"><span>Combined approved credit</span><strong>${total} / ${p.priorLearningMax} credits</strong></div>` : ''}
     </div>`;
   }
 
@@ -233,35 +240,47 @@
         <div class="choice-row logic-choices" role="group" aria-label="Symbolic Logic status">${logicOptions.map(([value, label]) => `<button type="button" class="choice-button${state.logicStatus === value ? ' selected' : ''}" data-set="logicStatus" data-value="${value}">${label}</button>`).join('')}</div></div>`;
     }
 
+    if (stage === 'logic' && state.program === 'phd') {
+      return `<div class="control-group"><h4>Have you passed the Ph.D. logic competency requirement?</h4>${yesNo('phdLogicSatisfied', state.phdLogicSatisfied, 'Passed', 'Not yet')}</div>`;
+    }
+
     if (stage === 'core') {
       return `<div class="control-group"><h4>Required coursework</h4><p>Mark a course satisfied only after completing it with a B+ or better.</p><div class="course-stack">${p.core.map(id => courseStatusSelect(id, true)).join('')}</div></div>`;
     }
 
     if (stage === 'electives') {
       const logicNote = state.program === 'ms' && state.logicStatus === 'iscomplete' ? '<div class="note-box">3 elective credits from Symbolic Logic Independent Study are already included below.</div>' : '';
-      return `<div class="elective-total"><span>Elective credits counted</span><strong>${report.analysis.electiveCompleted} / ${p.electiveMinimum}</strong></div>${logicNote}
-        <div class="control-group"><h4>Other completed elective credits</h4><p>Enter approved elective credits not represented by a named course, internship, or the Symbolic Logic Independent Study. Do not double-count the same credits.</p>
-        <label class="field">Other completed elective credits<select data-field="additionalElectiveCompleted">${optionRange(state.program === 'ms' ? 30 : 48, state.additionalElectiveCompleted)}</select></label></div>
-        <div class="control-group"><h4>Completed internship credits</h4>
-          <label class="field">Completed internship credits<select data-field="internshipCompleted">${optionRange(p.internshipMax, state.internshipCompleted)}</select></label></div>
+      const electiveLimitText = state.program === 'phd' ? `${report.analysis.electiveCompleted} / 12–30` : `${report.analysis.electiveCompleted} / ${p.electiveMinimum}`;
+      const namedCredits = report.analysis.namedElectiveCompleted;
+      const otherMax = state.program === 'phd' ? Math.max(0, p.electiveMax - namedCredits) : Math.max(0, p.totalCredits);
+      return `<div class="elective-total"><span>Elective credits counted</span><strong>${electiveLimitText}</strong></div>${logicNote}
+        <div class="control-group"><h4>Other completed elective credits</h4><p>Enter approved elective credits not represented by a named course${state.program === 'ms' ? ', internship, or the Symbolic Logic Independent Study' : ''}. Do not double-count the same credits.</p>
+        <label class="field">Other completed elective credits<select data-field="additionalElectiveCompleted">${optionRange(otherMax, state.additionalElectiveCompleted, 1)}</select></label></div>
+        <div class="control-group"><h4>Completed internship credits</h4><p>${state.program === 'phd' ? 'Directed internship coursework is tracked separately from the 12–30 elective-credit requirement.' : 'Up to 6 credits of directed internship coursework may be entered.'}</p>
+          <label class="field">Completed internship credits<select data-field="internshipCompleted">${optionRange(p.internshipMax, state.internshipCompleted, 1)}</select></label></div>
         <details class="advanced"${state.electiveDetailsOpen ? ' open' : ''}><summary>Optional: identify specific elective courses</summary><div class="course-stack">${p.electiveCourses.map(id => courseStatusSelect(id, false)).join('')}</div></details>`;
     }
 
     if (stage === 'prior') return priorCreditBody();
 
-    if (stage === 'research' && state.program === 'phd') {
-      return `<div class="control-group"><h4>Graduate School preliminary / qualifying requirement</h4>${yesNo('preliminarySatisfied', state.preliminarySatisfied, 'Satisfied', 'Not yet / not sure')}</div>
-        <div class="control-group"><h4>Responsible Conduct of Research training</h4>${yesNo('rcrCompleted', state.rcrCompleted, 'Complete', 'Not yet / not sure')}</div>`;
+    if (stage === 'qualifying' && state.program === 'phd') {
+      return `<div class="control-group"><h4>Have you passed the Qualifying Examination?</h4><p>A panel of faculty members evaluates the student on the designated topic.</p>${yesNo('qualifyingPassed', state.qualifyingPassed, 'Passed', 'Not yet')}</div>`;
+    }
+
+    if (stage === 'topical' && state.program === 'phd') {
+      return `<div class="control-group"><h4>Have you formed your dissertation committee?</h4>${yesNo('dissertationCommitteeFormed', state.dissertationCommitteeFormed, 'Committee formed', 'Not yet')}</div>
+        ${state.dissertationCommitteeFormed ? `<div class="branch-line"><div class="control-group"><h4>Have you submitted your topical to the dissertation committee?</h4>${yesNo('topicalSubmitted', state.topicalSubmitted, 'Submitted', 'Not yet')}</div></div>` : ''}
+        ${state.dissertationCommitteeFormed && state.topicalSubmitted ? `<div class="branch-line"><div class="control-group"><h4>Have you passed the Topical Defense?</h4>${yesNo('topicalDefensePassed', state.topicalDefensePassed, 'Passed — ABD', 'Not yet')}</div></div>` : ''}
+        ${state.topicalDefensePassed ? '<div class="success-box">Topical Defense complete. You are now at the ABD stage.</div>' : ''}`;
     }
 
     if (stage === 'guidance' && state.program === 'ms') {
       return `<div class="control-group"><h4>Master’s Project</h4><label class="field">Project status<select data-field="projectStage">
           ${[['not', 'Not started'], ['topic', 'Topic and supervision agreed'], ['underway', 'Project underway'], ['completed', 'Completed and approved']].map(([v, l]) => `<option value="${v}"${state.projectStage === v ? ' selected' : ''}>${l}</option>`).join('')}
         </select></label></div>
-        <div class="control-group"><h4>PHI 701 · MS Project Guidance</h4><div class="compact-grid">
-          <label class="field">Completed credits<select data-field="guidanceCompleted">${optionRange(p.guidanceMax, state.guidanceCompleted)}</select></label>
-          <label class="field">Total PHI 701 credits to use for the degree<select data-field="guidanceTarget">${[3, 6, 9].map(x => `<option value="${x}"${Number(state.guidanceTarget) === x ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
-        </div></div>`;
+        <div class="control-group"><h4>PHI 701 · MS Project Guidance</h4>
+          <label class="field">Completed credits<select data-field="guidanceCompleted">${optionRange(p.guidanceMax, state.guidanceCompleted, 1)}</select></label>
+        </div>`;
     }
 
     if (stage === 'application' && state.program === 'ms') {
@@ -270,20 +289,14 @@
     }
 
     if (stage === 'capstone' && state.program === 'phd') {
-      return `<div class="control-group"><h4>Dissertation stage</h4>${choiceButtons('dissertationStage', [
-          { value: 'not', label: 'Not started' }, { value: 'research', label: 'Research' }, { value: 'writing', label: 'Writing' }, { value: 'scheduled', label: 'Defense scheduled' }, { value: 'defended', label: 'Defended + accepted' }
-        ], state.dissertationStage)}</div>
-        <div class="control-group"><h4>PHI 703 · Dissertation Guidance</h4><div class="compact-grid">
-          <label class="field">Completed credits<select data-field="guidanceCompleted">${optionRange(p.guidanceMax, state.guidanceCompleted)}</select></label>
-          <label class="field">Total PHI 703 credits to use for the degree<select data-field="guidanceTarget">${[12, 15, 18, 21, 24, 27, 30].map(x => `<option value="${x}"${Number(state.guidanceTarget) === x ? ' selected' : ''}>${x}</option>`).join('')}</select></label>
-        </div></div>
-        <div class="control-group"><h4>Ph.D. Application to Candidacy filed?</h4>${yesNo('atcFiled', state.atcFiled, 'Filed', 'Not yet')}</div>`;
-    }
-
-    if (stage === 'graduate' && state.program === 'phd') {
-      return `<div class="control-group"><h4>M-Form submitted?</h4>${yesNo('mFormSubmitted', state.mFormSubmitted, 'Submitted', 'Not yet')}</div>
-        <div class="control-group"><h4>Electronic dissertation submitted?</h4>${yesNo('etdSubmitted', state.etdSubmitted, 'Submitted', 'Not yet')}</div>
-        <div class="control-group"><h4>Required doctoral surveys completed?</h4>${yesNo('doctoralSurveys', state.doctoralSurveys, 'Complete', 'Not yet')}</div>`;
+      return `<div class="control-group"><h4>PHI 703 · Dissertation Guidance</h4><p>Count completed dissertation-guidance credits. The Ph.D. requires between 12 and 30 credits of dissertation guidance.</p>
+          <label class="field">Completed credits<select data-field="guidanceCompleted">${optionRange(p.guidanceMax, state.guidanceCompleted, 1)}</select></label>
+        </div>
+        <div class="control-group"><h4>Responsible Conduct of Research training</h4>${yesNo('rcrCompleted', state.rcrCompleted, 'Complete', 'Not yet / not sure')}</div>
+        <div class="control-group"><h4>Ph.D. Application to Candidacy filed?</h4>${yesNo('atcFiled', state.atcFiled, 'Filed', 'Not yet')}</div>
+        <div class="control-group"><h4>Dissertation defense</h4>${choiceButtons('dissertationStage', [
+          { value: 'not', label: 'Not yet' }, { value: 'scheduled', label: 'Defense scheduled' }, { value: 'defended', label: 'Defended + accepted' }
+        ], state.dissertationStage)}</div>`;
     }
 
     return '<p class="muted">No additional selections are needed at this checkpoint.</p>';
@@ -310,7 +323,9 @@
     if (a.electiveCompleted > 0) chips.push(['Elective progress', `${a.electiveCompleted}/${p.electiveMinimum} cr`]);
     if (a.guidanceCompleted > 0) chips.push([state.program === 'ms' ? 'PHI 701 complete' : 'PHI 703 complete', `${a.guidanceCompleted} cr`]);
     if (state.program === 'ms' && E.logicSatisfied(state.logicStatus)) chips.push(['Symbolic Logic', 'Satisfied']);
-    if (state.program === 'phd' && state.preliminarySatisfied) chips.push(['Qualifying', 'Satisfied']);
+    if (state.program === 'phd' && state.phdLogicSatisfied) chips.push(['Logic competency', 'Passed']);
+    if (state.program === 'phd' && state.qualifyingPassed) chips.push(['Qualifying exam', 'Passed']);
+    if (state.program === 'phd' && state.topicalDefensePassed) chips.push(['Topical Defense', 'ABD']);
     els.branchSummary.innerHTML = chips.map(([k, v]) => `<div class="branch-chip"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('');
   }
 
@@ -319,14 +334,15 @@
     const text = `${next.title} ${next.detail}`.toLowerCase();
     if (text.includes('advisor') || text.includes('adviser') || text.includes('registration')) return 'start';
     if (state.program === 'ms' && text.includes('symbolic')) return 'logic';
+    if (state.program === 'phd' && text.includes('logic competency')) return 'logic';
     if (text.includes('phi 60') || text.includes('phi 51') || text.includes('required course')) return 'core';
     if (text.includes('elective') || text.includes('internship')) return 'electives';
     if (text.includes('prior') || text.includes('transfer')) return 'prior';
     if (state.program === 'ms' && (text.includes('master’s project') || text.includes('phi 701') || text.includes('guidance'))) return 'guidance';
     if (state.program === 'ms' && (text.includes('graduation application') || text.includes('graduation survey'))) return 'application';
-    if (state.program === 'phd' && (text.includes('preliminary') || text.includes('qualifying') || text.includes('conduct of research'))) return 'research';
-    if (state.program === 'phd' && (text.includes('dissertation') || text.includes('candidacy') || text.includes('guidance'))) return 'capstone';
-    if (state.program === 'phd' && (text.includes('survey') || text.includes('m-form') || text.includes('electronic dissertation'))) return 'graduate';
+    if (state.program === 'phd' && text.includes('qualifying examination')) return 'qualifying';
+    if (state.program === 'phd' && (text.includes('topical') || text.includes('committee'))) return 'topical';
+    if (state.program === 'phd' && (text.includes('dissertation') || text.includes('candidacy') || text.includes('guidance') || text.includes('conduct of research'))) return 'capstone';
     return fallback;
   }
 
@@ -426,9 +442,11 @@
     if (field === 'hasPrior') {
       state.hasPrior = value === 'yes';
       if (!state.hasPrior) { state.experienceCredits = 0; state.transferCredits = 0; }
-    } else if (['adviserAssigned', 'registrationConsulted', 'preliminarySatisfied', 'rcrCompleted', 'atcFiled', 'graduationApplied', 'graduationSurvey', 'mFormSubmitted', 'etdSubmitted', 'doctoralSurveys'].includes(field)) {
+    } else if (['adviserAssigned', 'registrationConsulted', 'phdLogicSatisfied', 'qualifyingPassed', 'dissertationCommitteeFormed', 'topicalSubmitted', 'topicalDefensePassed', 'rcrCompleted', 'atcFiled', 'graduationApplied', 'graduationSurvey'].includes(field)) {
       setBoolean(field, value);
       if (field === 'adviserAssigned' && !state.adviserAssigned) state.registrationConsulted = false;
+      if (field === 'dissertationCommitteeFormed' && !state.dissertationCommitteeFormed) { state.topicalSubmitted = false; state.topicalDefensePassed = false; }
+      if (field === 'topicalSubmitted' && !state.topicalSubmitted) state.topicalDefensePassed = false;
     } else {
       state[field] = value;
     }
@@ -441,23 +459,20 @@
     if (!state.termLoads || typeof state.termLoads !== 'object') state.termLoads = {};
     state.experienceCredits = Math.max(0, Math.min(p.priorLearningMax, Number(state.experienceCredits || 0)));
     state.transferCredits = Math.max(0, Math.min(p.priorLearningMax - state.experienceCredits, Number(state.transferCredits || 0)));
-    state.guidanceTarget = Math.max(p.guidanceMin, Math.min(p.guidanceMax, Number(state.guidanceTarget || p.guidanceMin)));
-    state.guidanceCompleted = Math.max(0, Math.min(state.guidanceTarget, Number(state.guidanceCompleted || 0)));
+    state.guidanceCompleted = Math.max(0, Math.min(p.guidanceMax, Number(state.guidanceCompleted || 0)));
     state.internshipCompleted = Math.max(0, Math.min(p.internshipMax, Number(state.internshipCompleted || 0)));
-    state.additionalElectiveCompleted = Math.max(0, Number(state.additionalElectiveCompleted || 0));
+    if (!state.electiveCreditsByCourse || typeof state.electiveCreditsByCourse !== 'object') state.electiveCreditsByCourse = {};
+    p.electiveCourses.forEach(id => { state.electiveCreditsByCourse[id] = Math.max(1, Math.min(3, Number(state.electiveCreditsByCourse[id] || 3))); });
+    const namedElectiveCredits = p.electiveCourses.reduce((sum, id) => sum + (state.electiveStatuses[id] === 'completed' ? state.electiveCreditsByCourse[id] : 0), 0);
+    const maxOther = p.electiveMax == null ? p.totalCredits : Math.max(0, p.electiveMax - namedElectiveCredits);
+    state.additionalElectiveCompleted = Math.max(0, Math.min(maxOther, Number(state.additionalElectiveCompleted || 0)));
   }
 
   function handleField(el) {
     const field = el.dataset.field;
     if (!field) return;
-    const numeric = ['experienceCredits', 'transferCredits', 'guidanceCompleted', 'guidanceTarget', 'internshipCompleted', 'additionalElectiveCompleted'];
+    const numeric = ['experienceCredits', 'transferCredits', 'guidanceCompleted', 'internshipCompleted', 'additionalElectiveCompleted'];
     state[field] = numeric.includes(field) ? Number(el.value) : el.value;
-    if (field === 'experienceCredits' && state.experienceCredits + state.transferCredits > D.programs[state.program].priorLearningMax) {
-      state.transferCredits = Math.max(0, D.programs[state.program].priorLearningMax - state.experienceCredits);
-    }
-    if (field === 'transferCredits' && state.experienceCredits + state.transferCredits > D.programs[state.program].priorLearningMax) {
-      state.experienceCredits = Math.max(0, D.programs[state.program].priorLearningMax - state.transferCredits);
-    }
     if (field === 'startTerm') {
       els.startTerm.value = el.value;
       state.termLoads = {};
@@ -545,14 +560,32 @@
       renderAll();
       return;
     }
+    if (event.target.matches('[data-elective-credits]')) {
+      const id = event.target.dataset.electiveCredits;
+      state.electiveCreditsByCourse[id] = Number(event.target.value);
+      state.electiveDetailsOpen = true;
+      normalizeState();
+      renderAll();
+      return;
+    }
     if (event.target.matches('[data-course]')) {
       const kind = event.target.dataset.kind;
       const id = event.target.dataset.course;
       if (kind === 'core') state.coreStatuses[id] = event.target.value;
       else {
+        const previous = state.electiveStatuses[id];
         state.electiveStatuses[id] = event.target.value;
         state.electiveDetailsOpen = true;
+        if (state.program === 'phd' && event.target.value === 'completed') {
+          const p = D.programs.phd;
+          const named = p.electiveCourses.reduce((sum, courseId) => sum + (state.electiveStatuses[courseId] === 'completed' ? Number(state.electiveCreditsByCourse[courseId] || 3) : 0), 0);
+          if (named + Number(state.additionalElectiveCompleted || 0) > p.electiveMax) {
+            state.electiveStatuses[id] = previous;
+            alert('Ph.D. elective credits cannot exceed 30 credits. Reduce other elective credits before adding this course.');
+          }
+        }
       }
+      normalizeState();
       renderAll();
     }
   });

@@ -72,9 +72,9 @@ The planner encodes:
 - 72 total credits.
 - 18 credits of required coursework.
 - 12–30 credits of PHI 703 Dissertation Guidance.
-- at least 24 elective-category credits in the planning model.
-- up to 12 directed-internship credits within the elective side of the program.
-- up to 36 credits of approved experience/transfer credit within the prior-learning allowance.
+- between 12 and 30 elective credits in the current planning model.
+- up to 12 directed-internship credits, tracked separately from the 12–30 elective-credit requirement.
+- up to 14 combined credits of approved professional-experience and transfer credit in the current planning model.
 - a preliminary/qualifying requirement and RCR checkpoint.
 - Ph.D. Application to Candidacy.
 - dissertation completion/defense and final Graduate School processing.
@@ -141,3 +141,5 @@ The planner does not request or adjudicate:
 - whether a specific class section is available,
 - individual exceptions not formally approved,
 - dissertation quality beyond the broad stage selected by the student.
+
+- The current Ph.D. interface also tracks a Logic competency checkpoint, a faculty-panel Qualifying Examination, dissertation committee formation, topical submission, and a Topical Defense leading to ABD status, based on the program rules supplied by the user for this revision.

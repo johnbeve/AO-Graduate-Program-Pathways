@@ -35,7 +35,8 @@ The Symbolic Logic checkpoint includes competency-exam, Independent Study, MindT
 4. **Experience/Transfer**
 5. **Research**
 6. **Dissertation**
-7. **Graduation**
+7. **Topical Defense**
+8. **Dissertation**
 
 ## Course status choices
 
@@ -54,7 +55,7 @@ The planner treats these as separate inputs:
 - **Prior experience credit** — students are instructed that competence must be demonstrated by passing an oral or written exam.
 - **Transfer credit** — students are instructed to provide evidence of course content, such as a syllabus or course website, together with a passing grade.
 
-The planner counts approved experience/transfer credit toward total degree credits. It does not automatically assign those credits to the elective minimum.
+The planner counts approved experience and transfer credit separately toward total degree credits. The combined cap is 6 credits for the M.S. and 14 credits for the Ph.D. These credits are not automatically assigned to the elective minimum.
 
 ## Course-load simulator
 
@@ -117,3 +118,8 @@ The included `.nojekyll` file tells GitHub Pages to serve the static files direc
 ## Tests
 
 Open `tests.html` in a browser. A passing build should report `0 failures`.
+
+
+### Current Ph.D. milestone sequence
+
+The Ph.D. pathway includes Administrative, Logic, Core, Electives, Experience/Transfer, Qualifying Examination, Topical Defense, and Dissertation checkpoints. The Topical Defense sequence asks whether the dissertation committee has been formed, whether the topical has been submitted to that committee, and whether the defense has been passed; passing marks the student as ABD in the planner.

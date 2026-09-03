@@ -103,15 +103,21 @@ window.AO_ENGINE = (() => {
     const transferCredits = Math.min(transferRequested, Math.max(0, program.priorLearningMax - experienceCredits));
     const prior = experienceCredits + transferCredits;
 
-    const guidanceTarget = clamp(n(input.guidanceTarget), program.guidanceMin, program.guidanceMax);
-    const guidanceCompleted = clamp(n(input.guidanceCompleted), 0, guidanceTarget);
+    const guidanceCompleted = clamp(n(input.guidanceCompleted), 0, program.guidanceMax);
     const internshipCompleted = clamp(n(input.internshipCompleted), 0, program.internshipMax);
-    const additionalElectiveCompleted = Math.max(0, n(input.additionalElectiveCompleted));
+    const electiveCreditsByCourse = input.electiveCreditsByCourse || {};
 
-    const coreCompleted = named.core.reduce((s, x) => s + statusCredits(x.status), 0);
-    const namedElectiveCompleted = named.electives.reduce((s, x) => s + statusCredits(x.status), 0);
+    const coreCompleted = named.core.reduce((sum, x) => sum + statusCredits(x.status), 0);
+    const namedElectiveCompleted = named.electives.reduce((sum, x) => {
+      if (x.status !== 'completed') return sum;
+      return sum + clamp(n(electiveCreditsByCourse[x.id] || 3), 1, 3);
+    }, 0);
+    const electiveRoom = program.electiveMax == null ? program.totalCredits : Math.max(0, program.electiveMax - namedElectiveCompleted);
+    const additionalElectiveCompleted = clamp(n(input.additionalElectiveCompleted), 0, electiveRoom);
     const logicElectiveCredits = input.program === 'ms' && input.logicStatus === 'iscomplete' ? 3 : 0;
-    const electiveCompleted = namedElectiveCompleted + internshipCompleted + additionalElectiveCompleted + logicElectiveCredits;
+    const electiveCompleted = input.program === 'phd'
+      ? namedElectiveCompleted + additionalElectiveCompleted
+      : namedElectiveCompleted + internshipCompleted + additionalElectiveCompleted + logicElectiveCredits;
 
     const totalCompletedRaw = coreCompleted + namedElectiveCompleted + internshipCompleted + additionalElectiveCompleted + logicElectiveCredits + guidanceCompleted + prior;
     const totalCompleted = Math.min(program.totalCredits, totalCompletedRaw);
@@ -122,19 +128,13 @@ window.AO_ENGINE = (() => {
     if (experienceRequested + transferRequested > program.priorLearningMax) {
       warnings.push(`Experience and transfer credit together cannot exceed ${program.priorLearningMax} credits in this planning model.`);
     }
-    if (program.id === 'ms' && prior > 9) {
-      warnings.push('If approved M.S. experience/transfer credit would leave fewer than 21 UB graduate credits, confirm the credit application with the Graduate School before relying on the estimate.');
-    }
-    if (program.id === 'ms' && prior > 6) {
-      warnings.push('If more than 6 M.S. experience/transfer credits are being applied, confirm the approved total with the AO Director and Graduate School.');
-    }
     if (program.id === 'phd' && prior > 0) {
       warnings.push('Confirm with your advisor how approved Ph.D. experience/transfer credit is applied across the 72-credit degree requirements.');
     }
 
     const academicComplete = program.id === 'ms'
       ? coreSatisfied === program.core.length && guidanceCompleted >= program.guidanceMin && electiveCompleted >= program.electiveMinimum && totalCompleted >= program.totalCredits && logicSatisfied(input.logicStatus) && input.projectStage === 'completed'
-      : coreSatisfied === program.core.length && guidanceCompleted >= program.guidanceMin && electiveCompleted >= program.electiveMinimum && totalCompleted >= program.totalCredits && input.preliminarySatisfied && input.rcrCompleted && input.dissertationStage === 'defended';
+      : coreSatisfied === program.core.length && guidanceCompleted >= program.guidanceMin && electiveCompleted >= program.electiveMinimum && electiveCompleted <= program.electiveMax && totalCompleted >= program.totalCredits && input.phdLogicSatisfied && input.qualifyingPassed && input.dissertationCommitteeFormed && input.topicalSubmitted && input.topicalDefensePassed && input.rcrCompleted && input.atcFiled && input.dissertationStage === 'defended';
 
     return {
       program,
@@ -142,7 +142,6 @@ window.AO_ENGINE = (() => {
       prior,
       experienceCredits,
       transferCredits,
-      guidanceTarget,
       guidanceCompleted,
       internshipCompleted,
       additionalElectiveCompleted,
@@ -191,6 +190,8 @@ window.AO_ENGINE = (() => {
     if (input.program === 'ms') {
       const logicRow = logicRequirementRow(input);
       if (logicRow) rows.push(logicRow);
+    } else if (!input.phdLogicSatisfied) {
+      rows.push({ type: 'Logic', item: 'Ph.D. logic competency', action: 'Pass the Ph.D. logic competency requirement.', contact: 'adviser' });
     }
 
     a.coreRemaining.forEach(x => {
@@ -202,7 +203,7 @@ window.AO_ENGINE = (() => {
 
     const electiveNeed = Math.max(0, p.electiveMinimum - a.electiveCompleted);
     if (electiveNeed > 0) {
-      rows.push({ type: 'Electives', item: `${electiveNeed} more elective credit${electiveNeed === 1 ? '' : 's'} needed`, action: 'Complete approved electives or internship credit.', contact: 'adviser' });
+      rows.push({ type: 'Electives', item: `${electiveNeed} more elective credit${electiveNeed === 1 ? '' : 's'} needed`, action: input.program === 'phd' ? 'Complete approved elective coursework.' : 'Complete approved electives or internship credit.', contact: 'adviser' });
     }
 
     if (a.guidanceCompleted < p.guidanceMin) {
@@ -221,13 +222,13 @@ window.AO_ENGINE = (() => {
       if (!input.graduationApplied) rows.push({ type: 'Graduate School', item: 'Master’s Graduation Application in HUB', action: 'Apply for graduation by the current Graduate School deadline for your intended graduation term.', contact: 'graduateSchool' });
       if (!input.graduationSurvey) rows.push({ type: 'Graduate School', item: 'Master’s Graduation Survey', action: 'Complete the university-wide graduation survey before degree conferral.', contact: 'graduateSchool' });
     } else {
-      if (!input.preliminarySatisfied) rows.push({ type: 'Graduate School', item: 'Preliminary / qualifying requirement', action: 'Confirm and complete the AO program’s approved form of the Graduate School preliminary/qualifying requirement.', contact: 'adviser' });
-      if (!input.rcrCompleted) rows.push({ type: 'Graduate School', item: 'Responsible Conduct of Research (RCR) training', action: 'Complete a Graduate School-approved RCR training route.', contact: 'graduateSchool' });
-      if (!input.atcFiled) rows.push({ type: 'Graduate School', item: 'Ph.D. Application to Candidacy (ATC)', action: 'File the ATC for the intended conferral date.', contact: 'graduateSchool' });
-      if (input.dissertationStage !== 'defended') rows.push({ type: 'Dissertation', item: 'Dissertation and defense', action: dissertationNext(input.dissertationStage), contact: 'adviser' });
-      if (!input.mFormSubmitted) rows.push({ type: 'Graduate School', item: 'M-Form', action: 'Submit/confirm the M-Form showing departmental requirements and dissertation acceptance.', contact: 'graduateSchool' });
-      if (!input.etdSubmitted) rows.push({ type: 'Graduate School', item: 'Electronic dissertation submission', action: 'Submit the final dissertation electronically under Graduate School requirements.', contact: 'graduateSchool' });
-      if (!input.doctoralSurveys) rows.push({ type: 'Graduate School', item: 'Doctoral surveys', action: 'Complete required doctoral graduation surveys before conferral.', contact: 'graduateSchool' });
+      if (!input.qualifyingPassed) rows.push({ type: 'Qualifying Examination', item: 'Qualifying Examination', action: 'Pass the faculty-panel Qualifying Examination on the designated topic.', contact: 'adviser' });
+      if (!input.dissertationCommitteeFormed) rows.push({ type: 'Topical Defense', item: 'Dissertation committee', action: 'Form your dissertation committee before submitting the topical.', contact: 'adviser' });
+      else if (!input.topicalSubmitted) rows.push({ type: 'Topical Defense', item: 'Submit topical', action: 'Submit the topical to your dissertation committee for evaluation.', contact: 'adviser' });
+      else if (!input.topicalDefensePassed) rows.push({ type: 'Topical Defense', item: 'Topical Defense', action: 'Complete and pass the Topical Defense to advance to ABD status.', contact: 'adviser' });
+      if (!input.rcrCompleted) rows.push({ type: 'Dissertation', item: 'Responsible Conduct of Research (RCR) training', action: 'Complete a Graduate School-approved RCR training route.', contact: 'graduateSchool' });
+      if (!input.atcFiled) rows.push({ type: 'Dissertation', item: 'Ph.D. Application to Candidacy (ATC)', action: 'File the ATC for the intended conferral date.', contact: 'graduateSchool' });
+      if (input.dissertationStage !== 'defended') rows.push({ type: 'Dissertation', item: 'Dissertation defense', action: dissertationNext(input.dissertationStage), contact: 'adviser' });
     }
 
     return rows;
@@ -235,10 +236,8 @@ window.AO_ENGINE = (() => {
 
   function dissertationNext(stage) {
     switch (stage) {
-      case 'research': return 'Continue dissertation research and work with your advisor/committee toward a defensible manuscript.';
-      case 'writing': return 'Complete the dissertation manuscript and prepare for committee review and defense scheduling.';
-      case 'scheduled': return 'Complete the defense and final revisions; then obtain acceptance and submit final materials.';
-      default: return 'Begin dissertation planning with your advisor after the appropriate coursework and guidance.';
+      case 'scheduled': return 'Complete the dissertation defense and required revisions.';
+      default: return 'Work with your advisor and dissertation committee toward scheduling the dissertation defense.';
     }
   }
 
@@ -260,7 +259,7 @@ window.AO_ENGINE = (() => {
       steps.push({ priority: 10 + steps.length, title: row.item, detail: row.action, contact: row.contact });
     };
 
-    if (input.program === 'ms') addRow(remaining.find(r => r.type === 'Logic'));
+    addRow(remaining.find(r => r.type === 'Logic'));
     remaining.filter(r => r.type === 'Core').forEach(addRow);
     addRow(remaining.find(r => r.type === 'Electives'));
 
@@ -270,6 +269,10 @@ window.AO_ENGINE = (() => {
       steps.push({ priority: 20 + steps.length, title: 'Enter approved experience or transfer credit', detail: 'Enter the number of formally approved experience and transfer credits.', contact: 'programDirector' });
     }
 
+    if (input.program === 'phd') {
+      addRow(remaining.find(r => r.type === 'Qualifying Examination'));
+      addRow(remaining.find(r => r.type === 'Topical Defense'));
+    }
     remaining.forEach(addRow);
     if (a.warnings.length) steps.push({ priority: 90, title: 'Confirm approved experience/transfer credit', detail: a.warnings[0], contact: 'programDirector' });
     return steps.sort((x, y) => x.priority - y.priority).slice(0, 8);
@@ -289,7 +292,7 @@ window.AO_ENGINE = (() => {
       tasks.push({ label: courseLabel(x.id), credits: 3, kind: 'core', priority: 1 });
     });
 
-    const guidanceFuture = Math.max(0, a.guidanceTarget - a.guidanceCompleted);
+    const guidanceFuture = Math.max(0, p.guidanceMin - a.guidanceCompleted);
     splitIntoTasks(courseLabel(p.guidanceCourse), guidanceFuture, 'guidance', input.program === 'phd' ? 30 : 25).forEach(t => tasks.push(t));
 
     const explicitFutureCredits = tasks.reduce((s, t) => s + t.credits, 0);
