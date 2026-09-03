@@ -96,7 +96,7 @@
           <div>
             <p class="step-label">Try a route</p>
             <h2 id="pace-heading">How fast do you want to move?</h2>
-            <p>Choose a regular Fall/Spring load. Your projected route redraws immediately.</p>
+            <p>Choose a starting pace, then adjust any semester in the route below.</p>
           </div>
           <label class="start-term-label">Plan from
             <select id="start-term"></select>
@@ -113,12 +113,12 @@
         <div class="route-shell">
           <div class="route-head">
             <div>
-              <span class="step-label">Selected route</span>
+              <span class="step-label">Your route</span>
               <h3 id="route-finish"></h3>
+              <p id="route-note"></p>
             </div>
-            <p id="route-note"></p>
           </div>
-          <div id="timeline" class="timeline"></div>
+          <div id="timeline" class="timeline" aria-live="polite"></div>
         </div>
       </section>
 
@@ -127,7 +127,7 @@
           <div>
             <p class="step-label">Take it with you</p>
             <h2 id="summary-heading">Your current planning summary</h2>
-            <p>This updates continuously. Use it when you want a detailed checklist or something to discuss with your adviser.</p>
+            <p>This updates as you make selections.</p>
           </div>
           <div class="summary-actions">
             <button type="button" id="print-report">Print / Save PDF</button>
@@ -144,8 +144,8 @@
     <p><strong>Planning aid only.</strong> Verify official records, course availability, Graduate School requirements, and class-specific dates in HUB. University and program rules control if they differ from this tool.</p>
   </footer>
 
-  <script src="js/data.js?v=2"></script>
-  <script src="js/engine.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/data.js?v=3"></script>
+  <script src="js/engine.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>

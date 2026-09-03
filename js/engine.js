@@ -56,10 +56,19 @@ window.AO_ENGINE = (() => {
     });
   }
 
+  function defaultCapacityForTerm(term, input) {
+    if (term.type === 'fall' || term.type === 'spring') return clamp(n(input.regularLoad), 0, 5);
+    if (term.type === 'summer') return clamp(n(input.summerLoad), 0, 1);
+    return clamp(n(input.winterLoad), 0, 1);
+  }
+
   function capacityForTerm(term, input) {
-    if (term.type === 'fall' || term.type === 'spring') return n(input.regularLoad);
-    if (term.type === 'summer') return n(input.summerLoad);
-    return n(input.winterLoad);
+    const overrides = input.termLoads || {};
+    if (Object.prototype.hasOwnProperty.call(overrides, term.id)) {
+      const max = term.type === 'fall' || term.type === 'spring' ? 5 : 1;
+      return clamp(n(overrides[term.id]), 0, max);
+    }
+    return defaultCapacityForTerm(term, input);
   }
 
   function splitIntoTasks(label, credits, kind = 'generic', priority = 50) {
@@ -100,13 +109,13 @@ window.AO_ENGINE = (() => {
 
     const warnings = [];
     if (program.id === 'ms' && prior > 9) {
-      warnings.push('Current Graduate School policy states a minimum residency of 21 UB graduate credits for a master’s degree. Confirm how approved prior credit is classified before assuming all entered credits reduce UB coursework.');
+      warnings.push('If approved M.S. prior credit would leave fewer than 21 UB graduate credits, confirm the credit application with the Graduate School before relying on the estimate.');
     }
     if (program.id === 'ms' && prior > 6) {
-      warnings.push('The November 2025 M.S. handbook states a 6-credit combined transfer/professional-experience limit, while the later accepted SUNY proposal lists up to 12 credits of Prior Learning Assessment. Confirm the approved application of any credit above 6 with the Program Director and Graduate School.');
+      warnings.push('If more than 6 M.S. prior-learning or transfer credits are being applied, confirm the approved total with the Program Director and Graduate School.');
     }
     if (program.id === 'phd' && prior > 0) {
-      warnings.push('The Ph.D. proposal permits up to 36 credits of Prior Learning Assessment but does not specify exactly which curricular categories those credits replace. This planner counts approved credit toward the 72-credit total while keeping named core courses explicit; confirm category allocation with your adviser.');
+      warnings.push('Confirm with your adviser how approved Ph.D. prior-learning credit is allocated across the 72-credit degree requirements.');
     }
 
     const academicComplete = program.id === 'ms'
@@ -195,8 +204,8 @@ window.AO_ENGINE = (() => {
 
   function buildNextSteps(input, a, remaining) {
     const steps = [];
-    if (!input.adviserAssigned) steps.push({ priority: 1, title: 'Get your faculty adviser assignment confirmed', detail: 'Every student should have an assigned faculty adviser.', contact: 'programDirector' });
-    if (!input.registrationConsulted) steps.push({ priority: 2, title: 'Consult your adviser before registration', detail: input.program === 'ms' ? 'The M.S. handbook requires pre-registration consultation each semester.' : 'Use your faculty adviser to review course selection and progress.', contact: 'adviser' });
+    if (!input.adviserAssigned) steps.push({ priority: 1, title: 'Get your faculty adviser assignment confirmed', detail: 'Confirm your adviser assignment with the Program Director.', contact: 'programDirector' });
+    if (!input.registrationConsulted) steps.push({ priority: 2, title: 'Consult your adviser before registration', detail: 'Review your course selection and progress with your adviser before registration.', contact: 'adviser' });
     remaining.slice(0, 6).forEach((r, idx) => steps.push({ priority: 10 + idx, title: r.item, detail: r.action, contact: r.contact }));
     if (a.warnings.length) steps.push({ priority: 90, title: 'Confirm how approved prior credit is being applied', detail: a.warnings[0], contact: 'programDirector' });
     return steps.sort((x, y) => x.priority - y.priority).slice(0, 7);
@@ -228,12 +237,15 @@ window.AO_ENGINE = (() => {
     if (startIndex < 0) startIndex = 0;
     const tasks = createTimelineTasks(input, a);
     const scheduled = [];
+    const routeTerms = [];
+    const overrides = input.termLoads || {};
     let taskIndex = 0;
 
     for (let i = startIndex; i < allTerms.length && taskIndex < tasks.length; i += 1) {
       const term = allTerms[i];
       const cap = capacityForTerm(term, input);
-      if (cap <= 0) continue;
+      const baseCap = defaultCapacityForTerm(term, input);
+      const hasOverride = Object.prototype.hasOwnProperty.call(overrides, term.id);
       const termTasks = [];
       let slots = cap;
       while (slots > 0 && taskIndex < tasks.length) {
@@ -241,15 +253,23 @@ window.AO_ENGINE = (() => {
         taskIndex += 1;
         slots -= 1;
       }
-      if (termTasks.length) scheduled.push({ term, tasks: termTasks });
+
+      const regularTerm = term.type === 'fall' || term.type === 'spring';
+      const showTerm = regularTerm || cap > 0 || hasOverride;
+      if (showTerm) {
+        routeTerms.push({ term, tasks: termTasks, capacity: cap, baseCapacity: baseCap, hasOverride });
+      }
+      if (termTasks.length) scheduled.push({ term, tasks: termTasks, capacity: cap, baseCapacity: baseCap, hasOverride });
     }
 
     const finish = scheduled.length ? scheduled[scheduled.length - 1].term : allTerms[startIndex] || null;
     return {
       scheduled,
+      routeTerms,
       finish,
       unscheduled: tasks.slice(taskIndex),
-      assumption: 'This is a capacity model, not a course-offering guarantee. Verify actual offerings and class-specific deadlines in HUB.'
+      customized: Object.keys(overrides).length > 0,
+      assumption: 'Verify actual course offerings and class-specific deadlines in HUB.'
     };
   }
 
@@ -281,12 +301,12 @@ window.AO_ENGINE = (() => {
     const msConferral = input.program === 'ms' ? msConferralForTerm(timeline.finish) : null;
     const phdDeadline = input.program === 'phd' ? phDAtcDeadlineForFinish(timeline.finish) : null;
     const loadComparison = [1, 2, 3, 4, 5].map(load => {
-      const t = buildTimeline({ ...input, regularLoad: load }, a);
+      const t = buildTimeline({ ...input, regularLoad: load, termLoads: {} }, a);
       return { load, finish: t.finish, termsUsed: t.scheduled.length };
     });
     const contactsUsed = [...new Set(nextSteps.map(s => s.contact).concat(remaining.map(r => r.contact)))].map(key => ({ key, ...contactFor(key) }));
     return { input, analysis: a, remaining, nextSteps, timeline, msConferral, phdDeadline, loadComparison, contactsUsed };
   }
 
-  return { STATUS, inferStartTerm, generateFutureTerms, courseLabel, createReport, analyze };
+  return { STATUS, inferStartTerm, generateFutureTerms, courseLabel, createReport, analyze, buildTimeline, capacityForTerm };
 })();

@@ -18,22 +18,22 @@
 
   const stageDefs = {
     ms: [
-      { id: 'start', label: 'Start', title: 'Set your starting point', intro: 'Confirm your adviser and registration consultation. This keeps the administrative setup separate from the degree requirements.' },
-      { id: 'logic', label: 'Logic', title: 'Satisfy Symbolic Logic', intro: 'Handle the Symbolic Logic requirement first. Once it is satisfied, the pathway moves to the core AO courses.' },
-      { id: 'core', label: 'Core', title: 'Complete the core classes', intro: 'Mark each required course only when it has been completed with a B+ or better.' },
-      { id: 'electives', label: 'Electives', title: 'Complete electives and internships', intro: 'Track completed elective and internship credits. Optional named-course detail is available only if you want it.' },
-      { id: 'prior', label: 'Prior credit', title: 'Apply approved prior or transfer credit', intro: 'Enter only credit that has been formally approved. If you have none, this checkpoint closes immediately.' },
-      { id: 'guidance', label: 'Project', title: 'Complete Master’s Project guidance', intro: 'Track PHI 701 credits and the Master’s Project. There is one culminating path: the Master’s Project.' },
-      { id: 'application', label: 'Apply', title: 'Complete the Master’s graduation application', intro: 'Finish the final university application and survey steps for degree conferral.' }
+      { id: 'start', label: 'Start', title: 'Set your starting point', intro: 'Confirm your adviser and registration consultation.' },
+      { id: 'logic', label: 'Logic', title: 'Satisfy Symbolic Logic', intro: 'Complete the Symbolic Logic requirement.' },
+      { id: 'core', label: 'Core', title: 'Complete the core classes', intro: 'Mark each required course when it has been completed with a B+ or better.' },
+      { id: 'electives', label: 'Electives', title: 'Complete electives and internships', intro: 'Enter completed elective and internship credits.' },
+      { id: 'prior', label: 'Prior credit', title: 'Apply approved prior or transfer credit', intro: 'Enter formally approved prior-learning or transfer credit.' },
+      { id: 'guidance', label: 'Project', title: 'Complete Master’s Project guidance', intro: 'Complete PHI 701 and the Master’s Project.' },
+      { id: 'application', label: 'Apply', title: 'Complete the Master’s graduation application', intro: 'Submit the Master’s Graduation Application and complete the graduation survey.' }
     ],
     phd: [
-      { id: 'start', label: 'Start', title: 'Set your starting point', intro: 'Confirm advising and choose the term from which you want to model the rest of the degree.' },
-      { id: 'core', label: 'Core', title: 'Complete the doctoral core', intro: 'Mark a required course satisfied only when it has been completed with a B+ or better.' },
-      { id: 'electives', label: 'Electives', title: 'Complete electives and internships', intro: 'Track completed elective and internship credits without entering grades or other personal information.' },
-      { id: 'prior', label: 'Prior credit', title: 'Apply approved prior-learning credit', intro: 'Enter only formally approved Prior Learning Assessment credit. Named core requirements remain explicit.' },
-      { id: 'research', label: 'Qualify + RCR', title: 'Move into doctoral research', intro: 'Track the Graduate School preliminary/qualifying requirement and Responsible Conduct of Research training.' },
-      { id: 'capstone', label: 'Dissertation', title: 'Move through candidacy and dissertation work', intro: 'Track PHI 703 guidance, candidacy, and your dissertation stage.' },
-      { id: 'graduate', label: 'Graduate', title: 'Complete final doctoral processing', intro: 'Final dissertation submission and survey requirements appear here.' }
+      { id: 'start', label: 'Start', title: 'Set your starting point', intro: 'Confirm your adviser and registration consultation.' },
+      { id: 'core', label: 'Core', title: 'Complete the doctoral core', intro: 'Mark each required course when it has been completed with a B+ or better.' },
+      { id: 'electives', label: 'Electives', title: 'Complete electives and internships', intro: 'Enter completed elective and internship credits.' },
+      { id: 'prior', label: 'Prior credit', title: 'Apply approved prior-learning credit', intro: 'Enter formally approved Prior Learning Assessment credit.' },
+      { id: 'research', label: 'Qualify + RCR', title: 'Move into doctoral research', intro: 'Complete the preliminary/qualifying requirement and Responsible Conduct of Research training.' },
+      { id: 'capstone', label: 'Dissertation', title: 'Move through candidacy and dissertation work', intro: 'Track PHI 703 guidance, candidacy, and dissertation progress.' },
+      { id: 'graduate', label: 'Graduate', title: 'Complete final doctoral processing', intro: 'Complete final dissertation submission and doctoral survey requirements.' }
     ]
   };
 
@@ -57,7 +57,7 @@
     const electiveStatuses = Object.fromEntries(p.electiveCourses.map(id => [id, 'not']));
     return {
       program,
-      startTerm: E.inferStartTerm(), regularLoad: 2, summerLoad: 0, winterLoad: 0,
+      startTerm: E.inferStartTerm(), regularLoad: 2, summerLoad: 0, winterLoad: 0, termLoads: {},
       coreStatuses, electiveStatuses,
       hasPrior: null, priorCredits: 0, priorElectiveCredits: 0,
       guidanceCompleted: 0, guidanceTarget: program === 'ms' ? 3 : 12,
@@ -194,7 +194,7 @@
       ${state.hasPrior === true ? `<div class="branch-box"><h4>Approved credit</h4><div class="compact-grid">
         <label class="field">Total approved credits<select data-field="priorCredits">${optionRange(p.priorLearningMax, state.priorCredits)}</select></label>
         <label class="field">Approved toward electives<select data-field="priorElectiveCredits">${optionRange(Number(state.priorCredits), state.priorElectiveCredits)}</select></label>
-      </div>${state.program === 'ms' && Number(state.priorCredits) > 6 ? `<div class="warning-box">The supplied M.S. sources use different limits for prior credit above 6 credits. Confirm the approved application with the Program Director and Graduate School.</div>` : ''}</div>` : ''}
+      </div>${state.program === 'ms' && Number(state.priorCredits) > 6 ? `<div class="warning-box">If more than 6 M.S. prior-learning or transfer credits are being applied, confirm the approved total with the Program Director and Graduate School.</div>` : ''}</div>` : ''}
     </div>`;
   }
 
@@ -203,7 +203,7 @@
 
     if (stage === 'start') {
       return `<div class="control-group"><h4>Do you have an assigned faculty adviser?</h4>${yesNo('adviserAssigned', state.adviserAssigned, 'Yes', 'No / not sure')}</div>
-        ${state.adviserAssigned ? `<div class="branch-line"><div class="control-group"><h4>Have you consulted your adviser about registration for the current or next term?</h4>${yesNo('registrationConsulted', state.registrationConsulted, 'Yes', 'Not yet')}</div></div>` : `<div class="note-box">Once an adviser is assigned, the registration consultation step opens here.</div>`}
+        ${state.adviserAssigned ? `<div class="branch-line"><div class="control-group"><h4>Have you consulted your adviser about registration for the current or next term?</h4>${yesNo('registrationConsulted', state.registrationConsulted, 'Yes', 'Not yet')}</div></div>` : `<div class="note-box">After your adviser is assigned, confirm your registration consultation here.</div>`}
         <div class="control-group"><h4>Planning start term</h4><label class="field">Start the model from<select data-field="startTerm">${E.generateFutureTerms(2034).slice(0, 34).map(t => `<option value="${t.id}"${state.startTerm === t.id ? ' selected' : ''}>${esc(t.label)}${t.official ? '' : ' (projected)'}</option>`).join('')}</select></label></div>`;
     }
 
@@ -221,13 +221,13 @@
     }
 
     if (stage === 'core') {
-      return `<div class="control-group"><h4>Required coursework</h4><p>Use the same rule for both degrees: mark a course satisfied only when it has been completed with a B+ or better.</p><div class="course-stack">${p.core.map(id => courseStatusSelect(id, true)).join('')}</div></div>`;
+      return `<div class="control-group"><h4>Required coursework</h4><p>Mark a course satisfied only after completing it with a B+ or better.</p><div class="course-stack">${p.core.map(id => courseStatusSelect(id, true)).join('')}</div></div>`;
     }
 
     if (stage === 'electives') {
       return `<div class="control-group"><h4>Completed elective credits</h4><p>Use this for approved elective credits not identified by a named course below. Do not double-count the same course.</p>
         <label class="field">Completed elective credits<select data-field="additionalElectiveCompleted">${optionRange(state.program === 'ms' ? 30 : 48, state.additionalElectiveCompleted)}</select></label></div>
-        <div class="control-group"><h4>Completed internship credits</h4><p>Internship credit is part of the elective side of the pathway.</p>
+        <div class="control-group"><h4>Completed internship credits</h4>
           <label class="field">Completed internship credits<select data-field="internshipCompleted">${optionRange(p.internshipMax, state.internshipCompleted)}</select></label></div>
         <details class="advanced"><summary>Optional: identify specific elective courses</summary><div class="course-stack">${p.electiveCourses.map(id => courseStatusSelect(id, false)).join('')}</div></details>`;
     }
@@ -235,7 +235,7 @@
     if (stage === 'prior') return priorCreditBody();
 
     if (stage === 'research' && state.program === 'phd') {
-      return `<div class="control-group"><h4>Graduate School preliminary / qualifying requirement</h4><p>The supplied Ph.D. proposal does not define a more specific AO mechanism, so this planner does not invent one.</p>${yesNo('preliminarySatisfied', state.preliminarySatisfied, 'Satisfied', 'Not yet / not sure')}</div>
+      return `<div class="control-group"><h4>Graduate School preliminary / qualifying requirement</h4>${yesNo('preliminarySatisfied', state.preliminarySatisfied, 'Satisfied', 'Not yet / not sure')}</div>
         <div class="control-group"><h4>Responsible Conduct of Research training</h4>${yesNo('rcrCompleted', state.rcrCompleted, 'Complete', 'Not yet / not sure')}</div>`;
     }
 
@@ -314,30 +314,77 @@
     return fallback;
   }
 
+  function loadOptionMarkup(term, selected) {
+    const max = term.type === 'fall' || term.type === 'spring' ? 5 : 1;
+    let html = '';
+    for (let x = 0; x <= max; x += 1) {
+      const label = x === 0 ? '0 — take term off' : `${x} course${x === 1 ? '' : 's'}`;
+      html += `<option value="${x}"${Number(selected) === x ? ' selected' : ''}>${label}</option>`;
+    }
+    return html;
+  }
+
+  function paceLabel(load) {
+    if (load === 1) return 'Light pace';
+    if (load === 2) return 'Moderate pace';
+    if (load === 3) return 'Faster pace';
+    if (load === 4) return 'Heavy pace';
+    return 'Maximum modeled pace';
+  }
+
   function renderPace() {
     els.startTerm.value = state.startTerm;
     els.includeSummer.checked = Number(state.summerLoad) > 0;
     els.includeWinter.checked = Number(state.winterLoad) > 0;
-    els.loadBranches.innerHTML = report.loadComparison.map(x => `<button type="button" class="load-card${Number(state.regularLoad) === x.load ? ' selected' : ''}" data-load="${x.load}" aria-pressed="${Number(state.regularLoad) === x.load}">
-      <strong>${x.load}</strong><span>course${x.load === 1 ? '' : 's'} / regular semester</span><small>${esc(x.finish?.label || 'No added term')}</small>
-    </button>`).join('');
+    els.loadBranches.innerHTML = report.loadComparison.map(x => {
+      const selected = Number(state.regularLoad) === x.load;
+      const finishText = x.finish?.label ? `Credit plan: ${x.finish.label}` : 'No added credit terms';
+      return `<button type="button" class="load-card${selected ? ' selected' : ''}" data-load="${x.load}" aria-pressed="${selected}">
+        <span class="load-count">${x.load}</span>
+        <span class="load-unit">course${x.load === 1 ? '' : 's'} / Fall &amp; Spring</span>
+        <span class="load-finish">${esc(finishText)}</span>
+        <small>${esc(selected ? 'Selected starting pace' : paceLabel(x.load))}</small>
+      </button>`;
+    }).join('');
 
     els.loadBranches.querySelectorAll('[data-load]').forEach(button => {
       button.addEventListener('click', () => {
         state.regularLoad = Number(button.dataset.load);
+        state.termLoads = {};
         renderAll();
       });
     });
 
     const finish = report.timeline.finish;
-    els.routeFinish.textContent = finish ? `${state.regularLoad} course${state.regularLoad === 1 ? '' : 's'} / regular semester → ${finish.label}` : 'No additional credit-bearing terms modeled';
-    els.routeNote.textContent = state.program === 'phd'
-      ? 'This estimates the Ph.D. credit plan only. Dissertation completion cannot be predicted from course load.'
-      : 'The route changes with the load you select. It is a capacity model, not a promise that a particular course will be offered in a particular term.';
-    els.timeline.innerHTML = report.timeline.scheduled.length ? report.timeline.scheduled.map(row => `<article class="term-card">
-      <h4>${esc(row.term.label)}</h4><span>${row.term.official ? 'UB term dates loaded' : 'Projected planning term'}</span>
-      <ul>${row.tasks.map(t => `<li>${esc(shortTask(t.label))}<small>${t.credits} credits</small></li>`).join('')}</ul>
-    </article>`).join('') : '<div class="success-box">No additional credit-bearing terms are needed based on the selections entered.</div>';
+    const customText = report.timeline.customized ? ' · customized by semester' : '';
+    els.routeFinish.textContent = finish ? `Projected credit completion: ${finish.label}` : 'No additional credit-bearing terms modeled';
+    els.routeNote.textContent = `Starting pace: ${state.regularLoad} course${state.regularLoad === 1 ? '' : 's'} per Fall/Spring term${customText}. Change any semester below; later coursework shifts automatically.`;
+
+    if (!report.timeline.routeTerms.length) {
+      els.timeline.innerHTML = '<div class="success-box">No additional credit-bearing terms are needed based on the selections entered.</div>';
+      return;
+    }
+
+    const cards = report.timeline.routeTerms.map((row, index) => {
+      const isOff = row.capacity === 0;
+      const tasks = row.tasks.length
+        ? row.tasks.map(t => `<li>${esc(shortTask(t.label))}<small>${t.credits} credits</small></li>`).join('')
+        : '<li class="empty-term">Term off. Remaining coursework moves to a later term.</li>';
+      return `<article class="term-card${isOff ? ' term-off' : ''}">
+        <div class="term-card-head">
+          <div class="term-title-block"><span class="term-sequence">Term ${index + 1}</span><h4>${esc(row.term.label)}</h4><span>${row.term.official ? 'UB term dates loaded' : 'Projected planning term'}</span></div>
+          <label class="term-load-label">Courses this term
+            <select data-term-load="${esc(row.term.id)}" data-term-type="${esc(row.term.type)}" aria-label="Courses in ${esc(row.term.label)}">${loadOptionMarkup(row.term, row.capacity)}</select>
+          </label>
+        </div>
+        <ul>${tasks}</ul>
+      </article>`;
+    }).join('');
+
+    const caveat = state.program === 'phd'
+      ? 'Credit timeline only. Dissertation completion time varies. Verify course offerings in HUB.'
+      : 'Verify course offerings in HUB.';
+    els.timeline.innerHTML = `${cards}<p class="route-disclaimer">${esc(caveat)}</p>`;
   }
 
   function shortTask(label) {
@@ -376,6 +423,7 @@
 
   function normalizeState() {
     const p = D.programs[state.program];
+    if (!state.termLoads || typeof state.termLoads !== 'object') state.termLoads = {};
     state.priorCredits = Math.max(0, Math.min(p.priorLearningMax, Number(state.priorCredits || 0)));
     state.priorElectiveCredits = Math.max(0, Math.min(state.priorCredits, Number(state.priorElectiveCredits || 0)));
     state.guidanceTarget = Math.max(p.guidanceMin, Math.min(p.guidanceMax, Number(state.guidanceTarget || p.guidanceMin)));
@@ -389,7 +437,10 @@
     if (!field) return;
     const numeric = ['priorCredits', 'priorElectiveCredits', 'guidanceCompleted', 'guidanceTarget', 'internshipCompleted', 'additionalElectiveCompleted'];
     state[field] = numeric.includes(field) ? Number(el.value) : el.value;
-    if (field === 'startTerm') els.startTerm.value = el.value;
+    if (field === 'startTerm') {
+      els.startTerm.value = el.value;
+      state.termLoads = {};
+    }
     normalizeState();
     renderAll();
   }
@@ -411,9 +462,9 @@
     report.nextSteps.forEach((s, i) => lines.push(`${i + 1}. ${s.title} — ${s.detail}`));
     lines.push('', 'REMAINING REQUIREMENTS');
     report.remaining.forEach(r => lines.push(`- ${r.item}: ${r.action}`));
-    lines.push('', `SELECTED ROUTE — ${state.regularLoad} course${state.regularLoad === 1 ? '' : 's'} per regular semester`);
-    report.timeline.scheduled.forEach(row => {
-      lines.push(row.term.label);
+    lines.push('', `SELECTED ROUTE — starting pace ${state.regularLoad} course${state.regularLoad === 1 ? '' : 's'} per Fall/Spring semester${report.timeline.customized ? ' (customized by semester)' : ''}`);
+    report.timeline.routeTerms.forEach(row => {
+      lines.push(`${row.term.label} — ${row.capacity} course${row.capacity === 1 ? '' : 's'}`);
       row.tasks.forEach(t => lines.push(`  - ${t.label} (${t.credits} cr)`));
     });
     if (a.warnings.length) {
@@ -459,6 +510,18 @@
   document.addEventListener('change', event => {
     if (!state) return;
     if (event.target.matches('[data-field]')) { handleField(event.target); return; }
+    if (event.target.matches('[data-term-load]')) {
+      const id = event.target.dataset.termLoad;
+      const termType = event.target.dataset.termType;
+      const value = Number(event.target.value);
+      const baseline = termType === 'fall' || termType === 'spring'
+        ? Number(state.regularLoad)
+        : termType === 'summer' ? Number(state.summerLoad) : Number(state.winterLoad);
+      if (value === baseline) delete state.termLoads[id];
+      else state.termLoads[id] = value;
+      renderAll();
+      return;
+    }
     if (event.target.matches('[data-course]')) {
       const kind = event.target.dataset.kind;
       const id = event.target.dataset.course;
@@ -481,9 +544,21 @@
   });
 
   els.goNext.addEventListener('click', () => selectStage(els.goNext.dataset.targetStage || currentStageId(stageStatuses()), true));
-  els.startTerm.addEventListener('change', () => { state.startTerm = els.startTerm.value; renderAll(); });
-  els.includeSummer.addEventListener('change', () => { state.summerLoad = els.includeSummer.checked ? 1 : 0; renderAll(); });
-  els.includeWinter.addEventListener('change', () => { state.winterLoad = els.includeWinter.checked ? 1 : 0; renderAll(); });
+  els.startTerm.addEventListener('change', () => {
+    state.startTerm = els.startTerm.value;
+    state.termLoads = {};
+    renderAll();
+  });
+  els.includeSummer.addEventListener('change', () => {
+    state.summerLoad = els.includeSummer.checked ? 1 : 0;
+    Object.keys(state.termLoads).filter(id => id.startsWith('summer-')).forEach(id => delete state.termLoads[id]);
+    renderAll();
+  });
+  els.includeWinter.addEventListener('change', () => {
+    state.winterLoad = els.includeWinter.checked ? 1 : 0;
+    Object.keys(state.termLoads).filter(id => id.startsWith('winter-')).forEach(id => delete state.termLoads[id]);
+    renderAll();
+  });
 
   els.changeProgram.addEventListener('click', () => {
     state = null; report = null; els.app.hidden = true; els.gate.hidden = false;

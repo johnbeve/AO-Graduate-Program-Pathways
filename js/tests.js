@@ -17,7 +17,7 @@
     const p = D.programs[program];
     return {
       program,
-      startTerm: 'fall-2026', regularLoad: 2, summerLoad: 0, winterLoad: 0,
+      startTerm: 'fall-2026', regularLoad: 2, summerLoad: 0, winterLoad: 0, termLoads: {},
       coreStatuses: Object.fromEntries(p.core.map(id => [id, 'not'])),
       electiveStatuses: Object.fromEntries(p.electiveCourses.map(id => [id, 'not'])),
       hasPrior: null, priorCredits: 0, priorElectiveCredits: 0,
@@ -71,7 +71,7 @@
     const i = base('ms');
     i.priorCredits = 9;
     const a = E.analyze(i);
-    truthy(a.warnings.some(w => w.includes('6-credit')), 'Expected prior-credit warning');
+    truthy(a.warnings.some(w => w.includes('more than 6 M.S.')), 'Expected prior-credit warning');
   });
 
   test('Ph.D. PLA is capped at 36 credits', () => {
@@ -101,6 +101,39 @@
     const r5 = E.createReport(five);
     truthy(r5.timeline.scheduled.length < r1.timeline.scheduled.length, 'Five courses should produce fewer modeled terms than one course');
     truthy(r5.timeline.finish.id !== r1.timeline.finish.id, 'Finish terms should differ');
+  });
+
+
+  test('A student can change the number of courses in one regular semester', () => {
+    const i = base('ms');
+    const baseline = E.createReport(i);
+    i.termLoads['fall-2026'] = 1;
+    const custom = E.createReport(i);
+    const fall = custom.timeline.routeTerms.find(r => r.term.id === 'fall-2026');
+    eq(fall.capacity, 1);
+    truthy(custom.timeline.customized, 'Expected semester-level customization');
+    truthy(custom.timeline.finish.id !== baseline.timeline.finish.id, 'Reducing the first term should move the modeled finish');
+  });
+
+  test('A regular semester can be set to zero courses and remains visible as a term off', () => {
+    const i = base('ms');
+    i.termLoads['spring-2027'] = 0;
+    const r = E.createReport(i);
+    const spring = r.timeline.routeTerms.find(row => row.term.id === 'spring-2027');
+    truthy(spring, 'Expected the zero-load regular term to remain in the route');
+    eq(spring.capacity, 0);
+    eq(spring.tasks.length, 0);
+  });
+
+  test('Pace comparison ignores semester overrides so cards remain clean templates', () => {
+    const i = base('ms');
+    i.termLoads['fall-2026'] = 0;
+    const r = E.createReport(i);
+    const two = r.loadComparison.find(x => x.load === 2);
+    const clean = base('ms');
+    clean.regularLoad = 2;
+    const cleanReport = E.createReport(clean);
+    eq(two.finish.id, cleanReport.timeline.finish.id);
   });
 
   const list = document.getElementById('results');

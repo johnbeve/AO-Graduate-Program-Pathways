@@ -108,3 +108,13 @@ The planner deliberately does not request or adjudicate:
 - dissertation quality beyond the broad stage selected by the student.
 
 These require official records or adviser/Graduate School judgment and do not belong in a no-storage self-service simulator.
+
+
+## Semester-specific route customization
+
+The selected 1–5 Fall/Spring pace is a starting template. Students may override individual Fall/Spring terms to 0–5 courses and enabled Summer/Winter terms to 0–1 course. Remaining tasks are redistributed automatically.
+
+
+## Student-facing copy policy
+
+Main-path checkpoint text is limited to directions the student needs. Source reconciliation, rationale for interface structure, and modeling caveats that are not immediate student actions remain in this source-notes file or concise disclaimers.

@@ -49,6 +49,8 @@ The **How fast do you want to move?** section compares 1–5 courses per regular
 
 Optional Summer and Winter study can also be toggled on. This is a capacity model rather than a course-offering guarantee.
 
+Students can then customize each generated semester individually. Fall/Spring terms allow 0–5 courses; Summer/Winter terms allow 0–1 course when enabled. Setting a term to 0 moves remaining coursework later and immediately recalculates the finish term.
+
 ## Privacy architecture
 
 There is no server-side application and no database. The site intentionally uses:
@@ -107,3 +109,8 @@ The included `.nojekyll` file tells GitHub Pages to serve the static files direc
 ## Tests
 
 Open `tests.html` in a browser. A passing build should report `0 failures`.
+
+
+## Interface copy
+
+Checkpoint copy is intentionally action-oriented. The page keeps directions students need to follow and moves source rationale or modeling notes out of the main workflow.
