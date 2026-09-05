@@ -311,7 +311,9 @@
     const next = report.nextSteps[0];
     els.nextMoveTitle.textContent = next ? next.title : 'Verify final degree clearance';
     els.nextMoveDetail.textContent = next ? next.detail : 'Your selections satisfy the modeled requirements. Confirm your official record with UB.';
-    els.goNext.dataset.targetStage = stageForNextMove(next, currentId);
+    const targetStage = stageForNextMove(next, currentId);
+    els.goNext.dataset.targetStage = targetStage;
+    els.goNext.hidden = !next || targetStage === selectedStage;
 
     const chips = [];
     if (a.experienceCredits > 0) chips.push(['Experience credit', `${a.experienceCredits} cr`]);
